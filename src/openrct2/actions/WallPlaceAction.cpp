@@ -456,7 +456,7 @@ bool WallPlaceAction::WallCheckObstructionWithTrack(
         return false;
     }
 
-    if (!(RideTypeDescriptors[ride->type].Flags & RIDE_TYPE_FLAG_ALLOW_DOORS_ON_TRACK))
+    if (!ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_ALLOW_DOORS_ON_TRACK))
     {
         return false;
     }
@@ -618,21 +618,11 @@ GameActions::Result::Ptr WallPlaceAction::WallCheckObstruction(
 bool WallPlaceAction::TrackIsAllowedWallEdges(
     uint8_t rideType, track_type_t trackType, uint8_t trackSequence, uint8_t direction)
 {
-    if (!ride_type_has_flag(rideType, RIDE_TYPE_FLAG_TRACK_NO_WALLS))
+    if (!GetRideTypeDescriptor(rideType).HasFlag(RIDE_TYPE_FLAG_TRACK_NO_WALLS))
     {
-        if (ride_type_has_flag(rideType, RIDE_TYPE_FLAG_FLAT_RIDE))
+        if (TrackSequenceElementAllowedWallEdges[trackType][trackSequence] & (1 << direction))
         {
-            if (FlatRideTrackSequenceElementAllowedWallEdges[trackType][trackSequence] & (1 << direction))
-            {
-                return true;
-            }
-        }
-        else
-        {
-            if (TrackSequenceElementAllowedWallEdges[trackType][trackSequence] & (1 << direction))
-            {
-                return true;
-            }
+            return true;
         }
     }
     return false;

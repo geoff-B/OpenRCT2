@@ -20,6 +20,7 @@
 #define DEFAULT_FLAT_RIDE_COLOUR_PRESET TRACK_COLOUR_PRESETS({ COLOUR_BRIGHT_RED, COLOUR_LIGHT_BLUE, COLOUR_YELLOW })
 #define DEFAULT_STALL_COLOUR_PRESET TRACK_COLOUR_PRESETS({ COLOUR_BRIGHT_RED, COLOUR_BRIGHT_RED, COLOUR_BRIGHT_RED })
 
+#include "../audio/audio.h"
 #include "../common.h"
 #include "../localisation/StringIds.h"
 #include "../sprites.h"
@@ -350,5 +351,13 @@ constexpr const RideTypeDescriptor DummyRTD =
     SET_FIELD(ColourKey, RideColourKey::Ride)
 };
 // clang-format on
+
+constexpr const RideTypeDescriptor& GetRideTypeDescriptor(ObjectEntryIndex rideType)
+{
+    if (rideType >= std::size(RideTypeDescriptors))
+        return DummyRTD;
+
+    return RideTypeDescriptors[rideType];
+}
 
 #endif

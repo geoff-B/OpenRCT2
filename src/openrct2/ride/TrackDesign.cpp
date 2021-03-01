@@ -57,6 +57,7 @@
 #include "Track.h"
 #include "TrackData.h"
 #include "TrackDesignRepository.h"
+#include "Vehicle.h"
 
 #include <algorithm>
 #include <iterator>
@@ -199,7 +200,7 @@ rct_string_id TrackDesign::CreateTrackDesignTrack(const Ride& ride)
     z = newCoords->z;
 
     const rct_track_coordinates* trackCoordinates = &TrackCoordinates[trackElement.element->AsTrack()->GetTrackType()];
-    auto trackBlock = get_track_def_from_ride_index(trackElement.element->AsTrack()->GetRideIndex(), trackType);
+    auto trackBlock = TrackBlocks[trackType];
     // Used in the following loop to know when we have
     // completed all of the elements and are back at the
     // start.
@@ -226,7 +227,7 @@ rct_string_id TrackDesign::CreateTrackDesignTrack(const Ride& ride)
         if (trackElement.element->AsTrack()->HasChain())
             trackFlags |= RCT12_TRACK_ELEMENT_TYPE_FLAG_CHAIN_LIFT;
         trackFlags |= trackElement.element->AsTrack()->GetColourScheme() << 4;
-        if (RideTypeDescriptors[ride.type].Flags & RIDE_TYPE_FLAG_HAS_ALTERNATIVE_TRACK_TYPE
+        if (ride.GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_HAS_ALTERNATIVE_TRACK_TYPE)
             && trackElement.element->AsTrack()->IsInverted())
         {
             trackFlags |= TD6_TRACK_ELEMENT_FLAG_INVERTED;
@@ -1506,9 +1507,6 @@ static int32_t track_design_place_maze(TrackDesign* td6, const CoordsXYZ& coords
 
 static bool track_design_place_ride(TrackDesign* td6, const CoordsXYZ& origin, Ride* ride)
 {
-    const rct_preview_track** trackBlockArray = (ride_type_has_flag(td6->type, RIDE_TYPE_FLAG_HAS_TRACK)) ? TrackBlocks
-                                                                                                          : FlatRideTrackBlocks;
-
     _trackPreviewOrigin = origin;
     if (_trackDesignPlaceOperation == PTD_OPERATION_DRAW_OUTLINES)
     {
@@ -1532,7 +1530,7 @@ static bool track_design_place_ride(TrackDesign* td6, const CoordsXYZ& origin, R
         switch (_trackDesignPlaceOperation)
         {
             case PTD_OPERATION_DRAW_OUTLINES:
-                for (const rct_preview_track* trackBlock = trackBlockArray[trackType]; trackBlock->index != 0xFF; trackBlock++)
+                for (const rct_preview_track* trackBlock = TrackBlocks[trackType]; trackBlock->index != 0xFF; trackBlock++)
                 {
                     auto tile = CoordsXY{ newCoords } + CoordsXY{ trackBlock->x, trackBlock->y }.Rotate(rotation);
                     track_design_update_max_min_coordinates({ tile, newCoords.z });
@@ -1542,7 +1540,7 @@ static bool track_design_place_ride(TrackDesign* td6, const CoordsXYZ& origin, R
             case PTD_OPERATION_REMOVE_GHOST:
             {
                 const rct_track_coordinates* trackCoordinates = &TrackCoordinates[trackType];
-                const rct_preview_track* trackBlock = trackBlockArray[trackType];
+                const rct_preview_track* trackBlock = TrackBlocks[trackType];
                 int32_t tempZ = newCoords.z - trackCoordinates->z_begin + trackBlock->z;
                 auto trackRemoveAction = TrackRemoveAction(
                     trackType, 0, { newCoords, tempZ, static_cast<Direction>(rotation & 3) });
@@ -1615,7 +1613,7 @@ static bool track_design_place_ride(TrackDesign* td6, const CoordsXYZ& origin, R
             case PTD_OPERATION_GET_PLACE_Z:
             {
                 int32_t tempZ = newCoords.z - TrackCoordinates[trackType].z_begin;
-                for (const rct_preview_track* trackBlock = trackBlockArray[trackType]; trackBlock->index != 0xFF; trackBlock++)
+                for (const rct_preview_track* trackBlock = TrackBlocks[trackType]; trackBlock->index != 0xFF; trackBlock++)
                 {
                     auto tile = CoordsXY{ newCoords } + CoordsXY{ trackBlock->x, trackBlock->y }.Rotate(rotation);
                     if (!map_is_location_valid(tile))
@@ -1915,7 +1913,7 @@ static bool track_design_place_preview(TrackDesign* td6, money32* cost, Ride** o
 
     // Flat rides need their vehicle colours loaded for display
     // in the preview window
-    if (!ride_type_has_flag(td6->type, RIDE_TYPE_FLAG_HAS_TRACK))
+    if (!GetRideTypeDescriptor(td6->type).HasFlag(RIDE_TYPE_FLAG_HAS_TRACK))
     {
         for (int32_t i = 0; i < RCT12_MAX_VEHICLE_COLOURS; i++)
         {
@@ -2020,7 +2018,7 @@ void track_design_draw_preview(TrackDesign* td6, uint8_t* pixels)
 
     // Special case for flat rides - Z-axis info is irrelevant
     // and must be zeroed out lest the preview be off-centre
-    if (!ride_type_has_flag(td6->type, RIDE_TYPE_FLAG_HAS_TRACK))
+    if (!GetRideTypeDescriptor(td6->type).HasFlag(RIDE_TYPE_FLAG_HAS_TRACK))
     {
         centre.z = 0;
         size_z = 0;

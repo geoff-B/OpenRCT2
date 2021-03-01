@@ -26,11 +26,11 @@
 #include <iterator>
 #include <vector>
 
-static rct_sprite _spriteList[MAX_SPRITES];
+static rct_sprite _spriteList[MAX_ENTITIES];
 static std::array<std::list<uint16_t>, EnumValue(EntityListId::Count)> gEntityLists;
 static std::vector<uint16_t> _freeIdList;
 
-static bool _spriteFlashingList[MAX_SPRITES];
+static bool _spriteFlashingList[MAX_ENTITIES];
 
 static std::array<std::vector<uint16_t>, SPATIAL_INDEX_SIZE> gSpriteSpatialIndex;
 
@@ -128,7 +128,7 @@ std::string rct_sprite_checksum::ToString() const
 
 SpriteBase* try_get_sprite(size_t spriteIndex)
 {
-    return spriteIndex >= MAX_SPRITES ? nullptr : &_spriteList[spriteIndex].misc;
+    return spriteIndex >= MAX_ENTITIES ? nullptr : &_spriteList[spriteIndex].misc;
 }
 
 SpriteBase* get_sprite(size_t spriteIndex)
@@ -137,7 +137,7 @@ SpriteBase* get_sprite(size_t spriteIndex)
     {
         return nullptr;
     }
-    openrct2_assert(spriteIndex < MAX_SPRITES, "Tried getting sprite %u", spriteIndex);
+    openrct2_assert(spriteIndex < MAX_ENTITIES, "Tried getting sprite %u", spriteIndex);
     return try_get_sprite(spriteIndex);
 }
 
@@ -258,7 +258,7 @@ void reset_sprite_list()
 {
     gSavedAge = 0;
     std::memset(static_cast<void*>(_spriteList), 0, sizeof(_spriteList));
-    for (int32_t i = 0; i < MAX_SPRITES; ++i)
+    for (int32_t i = 0; i < MAX_ENTITIES; ++i)
     {
         auto* spr = GetEntity(i);
         if (spr == nullptr)
@@ -290,7 +290,7 @@ void reset_sprite_spatial_index()
     {
         vec.clear();
     }
-    for (size_t i = 0; i < MAX_SPRITES; i++)
+    for (size_t i = 0; i < MAX_ENTITIES; i++)
     {
         auto* spr = GetEntity(i);
         if (spr != nullptr && spr->sprite_identifier != SpriteIdentifier::Null)
@@ -320,7 +320,7 @@ rct_sprite_checksum sprite_checksum()
         }
 
         _spriteHashAlg->Clear();
-        for (size_t i = 0; i < MAX_SPRITES; i++)
+        for (size_t i = 0; i < MAX_ENTITIES; i++)
         {
             // TODO create a way to copy only the specific type
             auto sprite = GetEntity(i);
@@ -644,17 +644,6 @@ static void SpriteSpatialMove(SpriteBase* sprite, const CoordsXY& newLoc)
     SpriteSpatialInsert(sprite, newLoc);
 }
 
-/**
- * Moves a sprite to a new location, invalidates the current position if valid
- * and also the new position.
- *
- *  rct2: 0x0069E9D3
- *
- * @param x (ax)
- * @param y (cx)
- * @param z (dx)
- * @param sprite (esi)
- */
 void SpriteBase::MoveTo(const CoordsXYZ& newLocation)
 {
     if (x != LOCATION_NULL)
@@ -683,6 +672,18 @@ void SpriteBase::MoveTo(const CoordsXYZ& newLocation)
         sprite_set_coordinates(loc, this);
         Invalidate(); // Invalidate new position.
     }
+}
+
+CoordsXYZ SpriteBase::GetLocation() const
+{
+    return { x, y, z };
+}
+
+void SpriteBase::SetLocation(const CoordsXYZ& newLocation)
+{
+    x = static_cast<int16_t>(newLocation.x);
+    y = static_cast<int16_t>(newLocation.y);
+    z = static_cast<int16_t>(newLocation.z);
 }
 
 void sprite_set_coordinates(const CoordsXYZ& spritePos, SpriteBase* sprite)
@@ -944,12 +945,12 @@ EntityTweener& EntityTweener::Get()
 
 void sprite_set_flashing(SpriteBase* sprite, bool flashing)
 {
-    assert(sprite->sprite_index < MAX_SPRITES);
+    assert(sprite->sprite_index < MAX_ENTITIES);
     _spriteFlashingList[sprite->sprite_index] = flashing;
 }
 
 bool sprite_get_flashing(SpriteBase* sprite)
 {
-    assert(sprite->sprite_index < MAX_SPRITES);
+    assert(sprite->sprite_index < MAX_ENTITIES);
     return _spriteFlashingList[sprite->sprite_index];
 }

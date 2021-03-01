@@ -510,7 +510,7 @@ static void benchgfx_render_screenshots(const char* inputPath, std::unique_ptr<I
     }
     catch (const std::exception& e)
     {
-        std::fprintf(stderr, "%s", e.what());
+        Console::Error::WriteLine("%s", e.what());
     }
 
     for (auto& dpi : dpis)
@@ -813,6 +813,11 @@ void CaptureImage(const CaptureOptions& options)
 
     auto backupRotation = gCurrentRotation;
     gCurrentRotation = options.Rotation;
+
+    if (options.Transparent)
+    {
+        viewport.flags |= VIEWPORT_FLAG_TRANSPARENT_BACKGROUND;
+    }
 
     auto outputPath = ResolveFilenameForCapture(options.Filename);
     auto dpi = CreateDPI(viewport);

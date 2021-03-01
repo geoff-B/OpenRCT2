@@ -904,7 +904,7 @@ static void window_top_toolbar_paint(rct_window* w, rct_drawpixelinfo* dpi)
         {
             DrawTextBasic(
                 dpi, screenPos + ScreenCoordsXY{ 26, 2 }, STR_OVERLAY_CLEARANCE_CHECKS_DISABLED, {},
-                COLOUR_DARK_ORANGE | COLOUR_FLAG_OUTLINE, TextAlignment::RIGHT);
+                { COLOUR_DARK_ORANGE | COLOUR_FLAG_OUTLINE, TextAlignment::RIGHT });
         }
     }
 
@@ -981,10 +981,9 @@ static void window_top_toolbar_paint(rct_window* w, rct_drawpixelinfo* dpi)
         // Draw number of players.
         auto ft = Formatter();
         ft.Add<int32_t>(network_get_num_players());
-        gCurrentFontSpriteBase = FONT_SPRITE_BASE_MEDIUM;
         DrawTextBasic(
-            dpi, screenPos + ScreenCoordsXY{ 23, 1 }, STR_COMMA16, ft, COLOUR_WHITE | COLOUR_FLAG_OUTLINE,
-            TextAlignment::RIGHT);
+            dpi, screenPos + ScreenCoordsXY{ 23, 1 }, STR_COMMA16, ft,
+            { COLOUR_WHITE | COLOUR_FLAG_OUTLINE, TextAlignment::RIGHT });
     }
 }
 
@@ -994,12 +993,10 @@ static void window_top_toolbar_paint(rct_window* w, rct_drawpixelinfo* dpi)
  */
 static void repaint_scenery_tool_down(const ScreenCoordsXY& windowPos, rct_widgetindex widgetIndex)
 {
-    auto flags = VIEWPORT_INTERACTION_MASK_SCENERY & VIEWPORT_INTERACTION_MASK_WALL & VIEWPORT_INTERACTION_MASK_LARGE_SCENERY
-        & VIEWPORT_INTERACTION_MASK_BANNER;
-    // This is -2 as banner is 12 but flags are offset different
-
+    auto flags = EnumsToFlags(
+        ViewportInteractionItem::Scenery, ViewportInteractionItem::Wall, ViewportInteractionItem::LargeScenery,
+        ViewportInteractionItem::Banner);
     auto info = get_map_coordinates_from_pos(windowPos, flags);
-
     switch (info.SpriteType)
     {
         case ViewportInteractionItem::Scenery:
@@ -1073,11 +1070,10 @@ static void repaint_scenery_tool_down(const ScreenCoordsXY& windowPos, rct_widge
 
 static void scenery_eyedropper_tool_down(const ScreenCoordsXY& windowPos, rct_widgetindex widgetIndex)
 {
-    auto flags = VIEWPORT_INTERACTION_MASK_SCENERY & VIEWPORT_INTERACTION_MASK_WALL & VIEWPORT_INTERACTION_MASK_LARGE_SCENERY
-        & VIEWPORT_INTERACTION_MASK_BANNER & VIEWPORT_INTERACTION_MASK_FOOTPATH_ITEM;
-
+    auto flags = EnumsToFlags(
+        ViewportInteractionItem::Scenery, ViewportInteractionItem::Wall, ViewportInteractionItem::LargeScenery,
+        ViewportInteractionItem::Banner, ViewportInteractionItem::FootpathItem);
     auto info = get_map_coordinates_from_pos(windowPos, flags);
-
     switch (info.SpriteType)
     {
         case ViewportInteractionItem::Scenery:
@@ -1177,9 +1173,9 @@ static void sub_6E1F34_update_screen_coords_and_buttons_pressed(bool canRaiseIte
             if (InputTestPlaceObjectModifier(PLACE_OBJECT_MODIFIER_COPY_Z))
             {
                 // CTRL pressed
-                auto flags = VIEWPORT_INTERACTION_MASK_TERRAIN & VIEWPORT_INTERACTION_MASK_RIDE
-                    & VIEWPORT_INTERACTION_MASK_SCENERY & VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_WALL
-                    & VIEWPORT_INTERACTION_MASK_LARGE_SCENERY;
+                auto flags = EnumsToFlags(
+                    ViewportInteractionItem::Terrain, ViewportInteractionItem::Ride, ViewportInteractionItem::Scenery,
+                    ViewportInteractionItem::Footpath, ViewportInteractionItem::Wall, ViewportInteractionItem::LargeScenery);
                 auto info = get_map_coordinates_from_pos(screenPos, flags);
 
                 if (info.SpriteType != ViewportInteractionItem::None)
@@ -1347,7 +1343,7 @@ static void sub_6E1F34_small_scenery(
     // If CTRL not pressed
     if (!gSceneryCtrlPressed)
     {
-        auto flags = VIEWPORT_INTERACTION_MASK_TERRAIN & VIEWPORT_INTERACTION_MASK_WATER;
+        auto flags = EnumsToFlags(ViewportInteractionItem::Terrain, ViewportInteractionItem::Water);
 
         auto info = get_map_coordinates_from_pos(screenPos, flags);
         gridPos = info.Loc;
@@ -1441,8 +1437,7 @@ static void sub_6E1F34_path_item(
     sub_6E1F34_update_screen_coords_and_buttons_pressed(false, screenPos);
 
     // Path bits
-    auto flags = VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_FOOTPATH_ITEM;
-
+    auto flags = EnumsToFlags(ViewportInteractionItem::Footpath, ViewportInteractionItem::FootpathItem);
     auto info = get_map_coordinates_from_pos(screenPos, flags);
     gridPos = info.Loc;
 
@@ -1664,8 +1659,7 @@ static void sub_6E1F34_banner(
     sub_6E1F34_update_screen_coords_and_buttons_pressed(false, screenPos);
 
     // Banner
-    auto flags = VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_FOOTPATH_ITEM;
-
+    auto flags = EnumsToFlags(ViewportInteractionItem::Footpath, ViewportInteractionItem::FootpathItem);
     auto info = get_map_coordinates_from_pos(screenPos, flags);
     gridPos = info.Loc;
 
@@ -2368,7 +2362,8 @@ static void top_toolbar_tool_update_water(const ScreenCoordsXY& screenPos)
 
     gMapSelectFlags &= ~MAP_SELECT_FLAG_ENABLE;
 
-    auto info = get_map_coordinates_from_pos(screenPos, VIEWPORT_INTERACTION_MASK_TERRAIN & VIEWPORT_INTERACTION_MASK_WATER);
+    auto info = get_map_coordinates_from_pos(
+        screenPos, EnumsToFlags(ViewportInteractionItem::Terrain, ViewportInteractionItem::Water));
 
     if (info.SpriteType == ViewportInteractionItem::None)
     {

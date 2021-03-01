@@ -50,6 +50,7 @@
 #include "../world/Park.h"
 #include "../world/Scenery.h"
 #include "../world/SmallScenery.h"
+#include "../world/Sprite.h"
 #include "../world/Surface.h"
 #include "../world/Wall.h"
 #include "RCT1.h"
@@ -847,7 +848,7 @@ private:
         if (_gameVersion == FILE_VERSION_RCT1)
         {
             // Original RCT had no music settings, take default style
-            dst->music = RideTypeDescriptors[dst->type].DefaultMusic;
+            dst->music = GetRideTypeDescriptor(dst->type).DefaultMusic;
 
             // Only merry-go-round and dodgems had music and used
             // the same flag as synchronise stations for the option to enable it
@@ -1244,7 +1245,7 @@ private:
         {
             dst->BoatLocation.setNull();
             dst->SetTrackDirection(src->GetTrackDirection());
-            dst->SetTrackType(src->GetTrackType());
+            dst->SetTrackType(RCT1TrackTypeToOpenRCT2(src->GetTrackType(), ride->type));
         }
         else
         {
@@ -1355,7 +1356,7 @@ private:
                 ImportPeep(peep, srcPeep);
             }
         }
-        for (size_t i = 0; i < MAX_SPRITES; i++)
+        for (size_t i = 0; i < MAX_ENTITIES; i++)
         {
             auto vehicle = GetEntity<Vehicle>(i);
             if (vehicle != nullptr)
@@ -2119,9 +2120,10 @@ private:
             {
                 auto dst2 = dst->AsTrack();
                 auto src2 = src->AsTrack();
-                auto rideType = _s4.rides[src2->GetRideIndex()].type;
+                const auto* ride = get_ride(src2->GetRideIndex());
+                auto rideType = (ride != nullptr) ? ride->type : RIDE_TYPE_NULL;
 
-                dst2->SetTrackType(src2->GetTrackType());
+                dst2->SetTrackType(RCT1TrackTypeToOpenRCT2(src2->GetTrackType(), rideType));
                 dst2->SetSequenceIndex(src2->GetSequenceIndex());
                 dst2->SetRideIndex(src2->GetRideIndex());
                 dst2->SetColourScheme(src2->GetColourScheme());
@@ -2131,7 +2133,7 @@ private:
                 dst2->SetStationIndex(src2->GetStationIndex());
                 dst2->SetHasGreenLight(src2->HasGreenLight());
                 dst2->SetIsIndestructible(src2->IsIndestructible());
-                if (rideType == RCT1_RIDE_TYPE_GHOST_TRAIN)
+                if (rideType == RIDE_TYPE_GHOST_TRAIN)
                 {
                     dst2->SetDoorAState(src2->GetDoorAState());
                     dst2->SetDoorBState(src2->GetDoorBState());
@@ -2681,7 +2683,7 @@ private:
                     dst->baseRideType = rideType;
                     dst->type = Research::EntryType::Ride;
                     dst->flags = 0;
-                    dst->category = RideTypeDescriptors[rideType].GetResearchCategory();
+                    dst->category = GetRideTypeDescriptor(rideType).GetResearchCategory();
                 }
             }
         }
@@ -2700,7 +2702,7 @@ private:
                     dst->baseRideType = rideType;
                     dst->type = Research::EntryType::Ride;
                     dst->flags = 0;
-                    dst->category = RideTypeDescriptors[rideType].GetResearchCategory();
+                    dst->category = GetRideTypeDescriptor(rideType).GetResearchCategory();
                 }
             }
         }

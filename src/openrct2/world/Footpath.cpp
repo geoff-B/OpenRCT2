@@ -28,6 +28,7 @@
 #include "../ride/Track.h"
 #include "../ride/TrackData.h"
 #include "../util/Util.h"
+#include "EntityList.h"
 #include "Map.h"
 #include "MapAnimation.h"
 #include "Park.h"
@@ -256,12 +257,12 @@ CoordsXY footpath_get_coordinates_from_pos(const ScreenCoordsXY& screenCoords, i
         return position;
     }
     auto viewport = window->viewport;
-    auto info = get_map_coordinates_from_pos_window(window, screenCoords, VIEWPORT_INTERACTION_MASK_FOOTPATH);
+    auto info = get_map_coordinates_from_pos_window(window, screenCoords, EnumsToFlags(ViewportInteractionItem::Footpath));
     if (info.SpriteType != ViewportInteractionItem::Footpath
         || !(viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL)))
     {
         info = get_map_coordinates_from_pos_window(
-            window, screenCoords, VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN);
+            window, screenCoords, EnumsToFlags(ViewportInteractionItem::Terrain, ViewportInteractionItem::Footpath));
         if (info.SpriteType == ViewportInteractionItem::None)
         {
             auto position = info.Loc;
@@ -354,7 +355,7 @@ CoordsXY footpath_bridge_get_info_from_pos(const ScreenCoordsXY& screenCoords, i
         return ret;
     }
     auto viewport = window->viewport;
-    auto info = get_map_coordinates_from_pos_window(window, screenCoords, VIEWPORT_INTERACTION_MASK_RIDE);
+    auto info = get_map_coordinates_from_pos_window(window, screenCoords, EnumsToFlags(ViewportInteractionItem::Ride));
     *tileElement = info.Element;
     if (info.SpriteType == ViewportInteractionItem::Ride
         && viewport->flags & (VIEWPORT_FLAG_UNDERGROUND_INSIDE | VIEWPORT_FLAG_HIDE_BASE | VIEWPORT_FLAG_HIDE_VERTICAL)
@@ -374,7 +375,7 @@ CoordsXY footpath_bridge_get_info_from_pos(const ScreenCoordsXY& screenCoords, i
 
     info = get_map_coordinates_from_pos_window(
         window, screenCoords,
-        VIEWPORT_INTERACTION_MASK_RIDE & VIEWPORT_INTERACTION_MASK_FOOTPATH & VIEWPORT_INTERACTION_MASK_TERRAIN);
+        EnumsToFlags(ViewportInteractionItem::Terrain, ViewportInteractionItem::Footpath, ViewportInteractionItem::Ride));
     if (info.SpriteType == ViewportInteractionItem::Ride && (*tileElement)->GetType() == TILE_ELEMENT_TYPE_ENTRANCE)
     {
         int32_t directions = entrance_get_directions(*tileElement);
@@ -424,12 +425,12 @@ void footpath_interrupt_peeps(const CoordsXYZ& footpathPos)
     {
         if (peep->State == PeepState::Sitting || peep->State == PeepState::Watching)
         {
-            if (peep->z == footpathPos.z)
+            auto location = peep->GetLocation();
+            if (location.z == footpathPos.z)
             {
+                auto destination = location.ToTileCentre();
                 peep->SetState(PeepState::Walking);
-                peep->DestinationX = (peep->x & 0xFFE0) + 16;
-                peep->DestinationY = (peep->y & 0xFFE0) + 16;
-                peep->DestinationTolerance = 5;
+                peep->SetDestination(destination, 5);
                 peep->UpdateCurrentActionSpriteType();
             }
         }
@@ -889,13 +890,13 @@ static void loc_6A6D7E(
 
                         const auto trackType = tileElement->AsTrack()->GetTrackType();
                         const uint8_t trackSequence = tileElement->AsTrack()->GetSequenceIndex();
-                        if (!(FlatRideTrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
+                        if (!(TrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
                         {
                             return;
                         }
                         uint16_t dx = direction_reverse(
                             (direction - tileElement->GetDirection()) & TILE_ELEMENT_DIRECTION_MASK);
-                        if (!(FlatRideTrackSequenceProperties[trackType][trackSequence] & (1 << dx)))
+                        if (!(TrackSequenceProperties[trackType][trackSequence] & (1 << dx)))
                         {
                             return;
                         }
@@ -969,12 +970,12 @@ static void loc_6A6C85(
 
         const auto trackType = tileElementPos.element->AsTrack()->GetTrackType();
         const uint8_t trackSequence = tileElementPos.element->AsTrack()->GetSequenceIndex();
-        if (!(FlatRideTrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
+        if (!(TrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH))
         {
             return;
         }
         uint16_t dx = (direction - tileElementPos.element->GetDirection()) & TILE_ELEMENT_DIRECTION_MASK;
-        if (!(FlatRideTrackSequenceProperties[trackType][trackSequence] & (1 << dx)))
+        if (!(TrackSequenceProperties[trackType][trackSequence] & (1 << dx)))
         {
             return;
         }
@@ -2111,10 +2112,10 @@ bool tile_element_wants_path_connection_towards(const TileCoordsXYZD& coords, co
 
                     const auto trackType = tileElement->AsTrack()->GetTrackType();
                     const uint8_t trackSequence = tileElement->AsTrack()->GetSequenceIndex();
-                    if (FlatRideTrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH)
+                    if (TrackSequenceProperties[trackType][trackSequence] & TRACK_SEQUENCE_FLAG_CONNECTS_TO_PATH)
                     {
                         uint16_t dx = ((coords.direction - tileElement->GetDirection()) & TILE_ELEMENT_DIRECTION_MASK);
-                        if (FlatRideTrackSequenceProperties[trackType][trackSequence] & (1 << dx))
+                        if (TrackSequenceProperties[trackType][trackSequence] & (1 << dx))
                         {
                             // Track element has the flags required for the given direction
                             return true;

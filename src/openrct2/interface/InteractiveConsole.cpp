@@ -46,6 +46,7 @@
 #include "../util/Util.h"
 #include "../windows/Intent.h"
 #include "../world/Climate.h"
+#include "../world/EntityList.h"
 #include "../world/Park.h"
 #include "../world/Scenery.h"
 #include "../world/Sprite.h"
@@ -655,7 +656,7 @@ static int32_t cc_get(InteractiveConsole& console, const arguments_t& argv)
             {
                 rct_viewport* viewport = window_get_viewport(w);
                 auto info = get_map_coordinates_from_pos(
-                    { viewport->view_width / 2, viewport->view_height / 2 }, VIEWPORT_INTERACTION_MASK_TERRAIN);
+                    { viewport->view_width / 2, viewport->view_height / 2 }, EnumsToFlags(ViewportInteractionItem::Terrain));
 
                 auto tileMapCoord = TileCoordsXY(info.Loc);
                 console.WriteFormatLine("location %d %d", tileMapCoord.x, tileMapCoord.y);
@@ -1099,7 +1100,7 @@ static int32_t cc_load_object(InteractiveConsole& console, const arguments_t& ar
                 rideType = rideEntry->ride_type[j];
                 if (rideType != RIDE_TYPE_NULL)
                 {
-                    ResearchCategory category = RideTypeDescriptors[rideType].GetResearchCategory();
+                    ResearchCategory category = GetRideTypeDescriptor(rideType).GetResearchCategory();
                     research_insert_ride_entry(rideType, groupIndex, category, true);
                 }
             }
@@ -1265,7 +1266,7 @@ static int32_t cc_show_limits(InteractiveConsole& console, [[maybe_unused]] cons
         }
     }
 
-    console.WriteFormatLine("Sprites: %d/%d", spriteCount, MAX_SPRITES);
+    console.WriteFormatLine("Sprites: %d/%d", spriteCount, MAX_ENTITIES);
     console.WriteFormatLine("Map Elements: %d/%d", tileElementCount, MAX_TILE_ELEMENTS);
     console.WriteFormatLine("Banners: %d/%zu", bannerCount, MAX_BANNERS);
     console.WriteFormatLine("Rides: %d/%d", rideCount, MAX_RIDES);
@@ -1588,7 +1589,7 @@ static int32_t cc_mp_desync(InteractiveConsole& console, const arguments_t& argv
 
     std::vector<Peep*> peeps;
 
-    for (int i = 0; i < MAX_SPRITES; i++)
+    for (int i = 0; i < MAX_ENTITIES; i++)
     {
         auto* sprite = GetEntity(i);
         if (sprite == nullptr || sprite->sprite_identifier == SpriteIdentifier::Null)

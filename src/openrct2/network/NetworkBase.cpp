@@ -24,7 +24,9 @@
 #include "../ui/UiContext.h"
 #include "../ui/WindowManager.h"
 #include "../util/SawyerCoding.h"
+#include "../world/EntityList.h"
 #include "../world/Location.hpp"
+#include "../world/Sprite.h"
 #include "network.h"
 
 #include <algorithm>
@@ -34,7 +36,7 @@
 // This string specifies which version of network stream current build uses.
 // It is used for making sure only compatible builds get connected, even within
 // single OpenRCT2 version.
-#define NETWORK_STREAM_VERSION "18"
+#define NETWORK_STREAM_VERSION "19"
 #define NETWORK_STREAM_ID OPENRCT2_VERSION "-" NETWORK_STREAM_VERSION
 
 static Peep* _pickup_peep = nullptr;
@@ -390,7 +392,8 @@ bool NetworkBase::BeginServer(uint16_t port, const std::string& address)
         _userManager.Save();
     }
 
-    printf("Ready for clients...\n");
+    auto* szAddress = address.empty() ? "*" : address.c_str();
+    Console::WriteLine("Listening for clients on %s:%hu", szAddress, port);
     network_chat_show_connected_message();
     network_chat_show_server_greeting();
 
@@ -3446,7 +3449,7 @@ const char* network_get_group_name(uint32_t index)
 void network_chat_show_connected_message()
 {
     auto windowManager = GetContext()->GetUiContext()->GetWindowManager();
-    std::string s = windowManager->GetKeyboardShortcutString(41 /* SHORTCUT_OPEN_CHAT_WINDOW */);
+    std::string s = windowManager->GetKeyboardShortcutString("interface.misc.multiplayer_chat");
     const char* sptr = s.c_str();
 
     utf8 buffer[256];

@@ -130,9 +130,7 @@ void window_update_all_viewports()
  */
 void window_update_all()
 {
-    // gfx_draw_all_dirty_blocks();
     // window_update_all_viewports();
-    // gfx_draw_all_dirty_blocks();
 
     // 1000 tick update
     gWindowUpdateTicks += gCurrentDeltaTime;
@@ -1532,9 +1530,10 @@ void window_event_scroll_mousedown_call(rct_window* w, int32_t scrollIndex, cons
 
 void window_event_scroll_mousedrag_call(rct_window* w, int32_t scrollIndex, const ScreenCoordsXY& screenCoords)
 {
-    if (w->event_handlers != nullptr)
-        if (w->event_handlers->scroll_mousedrag != nullptr)
-            w->event_handlers->scroll_mousedrag(w, scrollIndex, screenCoords);
+    if (w->event_handlers == nullptr)
+        w->OnScrollMouseDrag(scrollIndex, screenCoords);
+    else if (w->event_handlers->scroll_mousedrag != nullptr)
+        w->event_handlers->scroll_mousedrag(w, scrollIndex, screenCoords);
 }
 
 void window_event_scroll_mouseover_call(rct_window* w, int32_t scrollIndex, const ScreenCoordsXY& screenCoords)
@@ -2143,7 +2142,7 @@ void window_init_all()
 
 void window_follow_sprite(rct_window* w, size_t spriteIndex)
 {
-    if (spriteIndex < MAX_SPRITES || spriteIndex == SPRITE_INDEX_NULL)
+    if (spriteIndex < MAX_ENTITIES || spriteIndex == SPRITE_INDEX_NULL)
     {
         w->viewport_smart_follow_sprite = static_cast<uint16_t>(spriteIndex);
     }

@@ -18,7 +18,7 @@
 #include "RideRatings.h"
 #include "RideTypes.h"
 #include "ShopItem.h"
-#include "Vehicle.h"
+#include "VehicleEntry.h"
 
 #include <limits>
 #include <string_view>
@@ -30,6 +30,7 @@ struct Peep;
 struct Ride;
 struct RideTypeDescriptor;
 struct Staff;
+struct Vehicle;
 
 #define MAX_RIDE_TYPES_PER_RIDE_ENTRY 3
 // The max number of different types of vehicle.
@@ -1169,7 +1170,6 @@ int32_t get_turn_count_4_plus_elements(Ride* ride, uint8_t type);
 
 uint8_t ride_get_helix_sections(Ride* ride);
 
-bool ride_type_has_flag(int32_t rideType, uint64_t flag);
 bool ride_has_any_track_elements(const Ride* ride);
 
 void ride_construction_set_default_next_piece();

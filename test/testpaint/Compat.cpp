@@ -9,6 +9,7 @@
 
 #include "Addresses.h"
 
+#include <openrct2/Context.h>
 #include <openrct2/config/Config.h>
 #include <openrct2/interface/Colour.h>
 #include <openrct2/interface/Viewport.h>
@@ -169,7 +170,7 @@ template<> bool SpriteBase::Is<Vehicle>() const
 
 SpriteBase* get_sprite(size_t sprite_idx)
 {
-    assert(sprite_idx < MAX_SPRITES);
+    assert(sprite_idx < MAX_ENTITIES);
     return reinterpret_cast<SpriteBase*>(&sprite_list[sprite_idx]);
 }
 
@@ -210,11 +211,6 @@ TileElement* map_get_first_element_at(const CoordsXY& elementPos)
     }
     auto tileElementPos = TileCoordsXY{ elementPos };
     return gTileElementTilePointers[tileElementPos.x + tileElementPos.y * 256];
-}
-
-bool ride_type_has_flag(int rideType, uint64_t flag)
-{
-    return (RideTypeDescriptors[rideType].Flags & flag) != 0;
 }
 
 int16_t get_height_marker_offset()
@@ -871,7 +867,7 @@ void ride_ratings_calculate_single_rail_roller_coaster([[maybe_unused]] Ride* ri
 
 const RideTypeDescriptor& Ride::GetRideTypeDescriptor() const
 {
-    return RideTypeDescriptors[type];
+    return ::GetRideTypeDescriptor(type);
 }
 
 uint8_t TileElementBase::GetOwner() const
@@ -884,3 +880,11 @@ void TileElementBase::SetOwner(uint8_t newOwner)
     owner &= ~OWNER_MASK;
     owner |= (newOwner & OWNER_MASK);
 }
+
+namespace OpenRCT2
+{
+    IContext* GetContext()
+    {
+        return nullptr;
+    }
+} // namespace OpenRCT2

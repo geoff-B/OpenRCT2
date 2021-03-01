@@ -64,6 +64,7 @@
 #include "ui/WindowManager.h"
 #include "util/Util.h"
 #include "world/Park.h"
+#include "world/Sprite.h"
 
 #include <algorithm>
 #include <cmath>
@@ -271,6 +272,11 @@ namespace OpenRCT2
         void WriteLine(const std::string& s) override
         {
             _stdInOutConsole.WriteLine(s);
+        }
+
+        void WriteErrorLine(const std::string& s) override
+        {
+            _stdInOutConsole.WriteLineError(s);
         }
 
         /**

@@ -188,7 +188,7 @@ void S6Exporter::Export()
     // Map elements must be reorganised prior to saving otherwise save may be invalid
     map_reorganise_elements();
     ExportTileElements();
-    ExportSprites();
+    ExportEntities();
     ExportParkName();
 
     _s6.initial_cash = gInitialCash;
@@ -208,8 +208,8 @@ void S6Exporter::Export()
     // Not used by OpenRCT2 any more, but left in to keep RCT2 export working.
     for (uint8_t i = 0; i < std::size(RideTypeDescriptors); i++)
     {
-        researchedTrackPiecesA[i] = (RideTypeDescriptors[i].EnabledTrackPieces) & 0xFFFFFFFFULL;
-        researchedTrackPiecesB[i] = (RideTypeDescriptors[i].EnabledTrackPieces >> 32ULL) & 0xFFFFFFFFULL;
+        researchedTrackPiecesA[i] = (GetRideTypeDescriptor(i).EnabledTrackPieces) & 0xFFFFFFFFULL;
+        researchedTrackPiecesB[i] = (GetRideTypeDescriptor(i).EnabledTrackPieces >> 32ULL) & 0xFFFFFFFFULL;
     }
     std::memcpy(_s6.researched_track_types_a, researchedTrackPiecesA, sizeof(_s6.researched_track_types_a));
     std::memcpy(_s6.researched_track_types_b, researchedTrackPiecesB, sizeof(_s6.researched_track_types_b));
@@ -534,7 +534,7 @@ void S6Exporter::ExportRide(rct2_ride* dst, const Ride* src)
     if (useDefaultName)
     {
         // Default name with number
-        dst->name = RideTypeDescriptors[src->type].Naming.Name;
+        dst->name = GetRideTypeDescriptor(src->type).Naming.Name;
         dst->name_arguments_number = src->default_name_number;
     }
 
@@ -780,9 +780,10 @@ void S6Exporter::ExportRideRatingsCalcData()
     dst.proximity_start_z = src.ProximityStart.z;
     dst.current_ride = src.CurrentRide;
     dst.state = src.State;
-    dst.proximity_track_type = static_cast<uint8_t>(src.ProximityTrackType);
-    if (src.ProximityTrackType == TrackElemType::RotationControlToggle)
-        dst.proximity_track_type = static_cast<uint8_t>(TrackElemType::RotationControlToggleAlias);
+    if (src.ProximityTrackType == TrackElemType::None)
+        dst.proximity_track_type = 0xFF;
+    else
+        dst.proximity_track_type = OpenRCT2TrackTypeToRCT2(src.ProximityTrackType);
     dst.proximity_base_height = src.ProximityBaseHeight;
     dst.proximity_total = src.ProximityTotal;
     for (size_t i = 0; i < std::size(dst.proximity_scores); i++)
@@ -936,21 +937,6 @@ void S6Exporter::ExportMarketingCampaigns()
     }
 }
 
-void S6Exporter::ExportSprites()
-{
-    // Sprites needs to be reset before they get used.
-    // Might as well reset them in here to zero out the space and improve
-    // compression ratios. Especially useful for multiplayer servers that
-    // use zlib on the sent stream.
-    sprite_clear_all_unused();
-    for (int32_t i = 0; i < RCT2_MAX_SPRITES; i++)
-    {
-        ExportSprite(&_s6.sprites[i], reinterpret_cast<const rct_sprite*>(GetEntity(i)));
-    }
-
-    RebuildEntityLinks();
-}
-
 void S6Exporter::RebuildEntityLinks()
 {
     // Rebuild next/previous linked list entity indexs
@@ -1001,33 +987,6 @@ void S6Exporter::RebuildEntityLinks()
     }
 }
 
-void S6Exporter::ExportSprite(RCT2Sprite* dst, const rct_sprite* src)
-{
-    std::memset(dst, 0, sizeof(rct_sprite));
-    switch (src->misc.sprite_identifier)
-    {
-        case SpriteIdentifier::Null:
-            ExportSpriteCommonProperties(&dst->unknown, &src->misc);
-            break;
-        case SpriteIdentifier::Vehicle:
-            ExportSpriteVehicle(&dst->vehicle, &src->vehicle);
-            break;
-        case SpriteIdentifier::Peep:
-            ExportSpritePeep(&dst->peep, &src->peep);
-            break;
-        case SpriteIdentifier::Misc:
-            ExportSpriteMisc(&dst->unknown, &src->misc);
-            break;
-        case SpriteIdentifier::Litter:
-            ExportSpriteLitter(&dst->litter, &src->litter);
-            break;
-        default:
-            ExportSpriteCommonProperties(&dst->unknown, &src->misc);
-            log_warning("Sprite identifier %d can not be exported.", src->misc.sprite_identifier);
-            break;
-    }
-}
-
 constexpr RCT12EntityLinkListOffset GetRCT2LinkListOffset(const SpriteBase* src)
 {
     RCT12EntityLinkListOffset output = RCT12EntityLinkListOffset::Free;
@@ -1061,7 +1020,7 @@ constexpr RCT12EntityLinkListOffset GetRCT2LinkListOffset(const SpriteBase* src)
     return output;
 }
 
-void S6Exporter::ExportSpriteCommonProperties(RCT12SpriteBase* dst, const SpriteBase* src)
+void S6Exporter::ExportEntityCommonProperties(RCT12SpriteBase* dst, const SpriteBase* src)
 {
     dst->sprite_identifier = src->sprite_identifier;
     dst->linked_list_type_offset = GetRCT2LinkListOffset(src);
@@ -1081,11 +1040,11 @@ void S6Exporter::ExportSpriteCommonProperties(RCT12SpriteBase* dst, const Sprite
     dst->sprite_direction = src->sprite_direction;
 }
 
-void S6Exporter::ExportSpriteVehicle(RCT2SpriteVehicle* dst, const Vehicle* src)
+template<> void S6Exporter::ExportEntity(RCT2SpriteVehicle* dst, const Vehicle* src)
 {
     const auto* ride = src->GetRide();
 
-    ExportSpriteCommonProperties(dst, static_cast<const SpriteBase*>(src));
+    ExportEntityCommonProperties(dst, src);
     dst->type = EnumValue(src->SubType);
     dst->vehicle_sprite_type = src->vehicle_sprite_type;
     dst->bank_rotation = src->bank_rotation;
@@ -1110,10 +1069,7 @@ void S6Exporter::ExportSpriteVehicle(RCT2SpriteVehicle* dst, const Vehicle* src)
     }
     else
     {
-        // export SpinningControlToggle (256) as SpinningControlToggleAlias (100) for backwards compatability with OpenRCT2
-        auto trackType = src->GetTrackType();
-        if (trackType == TrackElemType::RotationControlToggle)
-            trackType = TrackElemType::RotationControlToggleAlias;
+        auto trackType = OpenRCT2TrackTypeToRCT2(src->GetTrackType());
         // Track direction and type are in the same field
         dst->SetTrackType(trackType);
         dst->SetTrackDirection(src->GetTrackDirection());
@@ -1172,9 +1128,18 @@ void S6Exporter::ExportSpriteVehicle(RCT2SpriteVehicle* dst, const Vehicle* src)
     dst->target_seat_rotation = src->target_seat_rotation;
 }
 
-void S6Exporter::ExportSpritePeep(RCT2SpritePeep* dst, const Peep* src)
+template<> void S6Exporter::ExportEntity(RCT2SpritePeep* dst, const Guest* src)
 {
-    ExportSpriteCommonProperties(dst, static_cast<const SpriteBase*>(src));
+    ExportEntityPeep(dst, src);
+}
+template<> void S6Exporter::ExportEntity(RCT2SpritePeep* dst, const Staff* src)
+{
+    ExportEntityPeep(dst, src);
+}
+
+void S6Exporter::ExportEntityPeep(RCT2SpritePeep* dst, const Peep* src)
+{
+    ExportEntityCommonProperties(dst, src);
 
     auto generateName = true;
     if (src->Name != nullptr)
@@ -1324,104 +1289,167 @@ void S6Exporter::ExportSpritePeep(RCT2SpritePeep* dst, const Peep* src)
     dst->item_standard_flags = static_cast<uint32_t>(src->GetItemFlags());
 }
 
-void S6Exporter::ExportSpriteMisc(RCT12SpriteBase* cdst, const MiscEntity* csrc)
+template<> void S6Exporter::ExportEntity(RCT12SpriteSteamParticle* dst, const SteamParticle* src)
 {
-    ExportSpriteCommonProperties(cdst, csrc);
-    cdst->type = EnumValue(csrc->SubType);
-    switch (csrc->SubType)
-    {
-        case MiscEntityType::SteamParticle:
-        {
-            auto src = static_cast<const SteamParticle*>(csrc);
-            auto dst = static_cast<RCT12SpriteSteamParticle*>(cdst);
-            dst->time_to_move = src->time_to_move;
-            dst->frame = src->frame;
-            break;
-        }
-        case MiscEntityType::MoneyEffect:
-        {
-            auto src = static_cast<const MoneyEffect*>(csrc);
-            auto dst = static_cast<RCT12SpriteMoneyEffect*>(cdst);
-            dst->move_delay = src->MoveDelay;
-            dst->num_movements = src->NumMovements;
-            dst->vertical = src->Vertical;
-            dst->value = src->Value;
-            dst->offset_x = src->OffsetX;
-            dst->wiggle = src->Wiggle;
-            break;
-        }
-        case MiscEntityType::CrashedVehicleParticle:
-        {
-            auto src = static_cast<const VehicleCrashParticle*>(csrc);
-            auto dst = static_cast<RCT12SpriteCrashedVehicleParticle*>(cdst);
-            dst->frame = src->frame;
-            dst->time_to_live = src->time_to_live;
-            dst->frame = src->frame;
-            dst->colour[0] = src->colour[0];
-            dst->colour[1] = src->colour[1];
-            dst->crashed_sprite_base = src->crashed_sprite_base;
-            dst->velocity_x = src->velocity_x;
-            dst->velocity_y = src->velocity_y;
-            dst->velocity_z = src->velocity_z;
-            dst->acceleration_x = src->acceleration_x;
-            dst->acceleration_y = src->acceleration_y;
-            dst->acceleration_z = src->acceleration_z;
-            break;
-        }
-        case MiscEntityType::ExplosionCloud:
-        case MiscEntityType::ExplosionFlare:
-        case MiscEntityType::CrashSplash:
-        {
-            auto src = static_cast<const MiscEntity*>(csrc);
-            auto dst = static_cast<RCT12SpriteParticle*>(cdst);
-            dst->frame = src->frame;
-            break;
-        }
-        case MiscEntityType::JumpingFountainWater:
-        case MiscEntityType::JumpingFountainSnow:
-        {
-            auto* src = static_cast<const JumpingFountain*>(csrc);
-            auto* dst = static_cast<RCT12SpriteJumpingFountain*>(cdst);
-            dst->num_ticks_alive = src->NumTicksAlive;
-            dst->frame = src->frame;
-            dst->fountain_flags = src->FountainFlags;
-            dst->target_x = src->TargetX;
-            dst->target_y = src->TargetY;
-            dst->target_y = src->TargetY;
-            dst->iteration = src->Iteration;
-            break;
-        }
-        case MiscEntityType::Balloon:
-        {
-            auto src = static_cast<const Balloon*>(csrc);
-            auto dst = static_cast<RCT12SpriteBalloon*>(cdst);
-            dst->popped = src->popped;
-            dst->time_to_move = src->time_to_move;
-            dst->frame = src->frame;
-            dst->colour = src->colour;
-            break;
-        }
-        case MiscEntityType::Duck:
-        {
-            auto src = static_cast<const Duck*>(csrc);
-            auto dst = static_cast<RCT12SpriteDuck*>(cdst);
-            dst->frame = src->frame;
-            dst->target_x = src->target_x;
-            dst->target_y = src->target_y;
-            dst->state = EnumValue(src->state);
-            break;
-        }
-        default:
-            log_warning("Misc. sprite type %d can not be exported.", cdst->type);
-            break;
-    }
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->time_to_move = src->time_to_move;
+    dst->frame = src->frame;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteMoneyEffect* dst, const MoneyEffect* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->move_delay = src->MoveDelay;
+    dst->num_movements = src->NumMovements;
+    dst->vertical = src->Vertical;
+    dst->value = src->Value;
+    dst->offset_x = src->OffsetX;
+    dst->wiggle = src->Wiggle;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteCrashedVehicleParticle* dst, const VehicleCrashParticle* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->frame = src->frame;
+    dst->time_to_live = src->time_to_live;
+    dst->frame = src->frame;
+    dst->colour[0] = src->colour[0];
+    dst->colour[1] = src->colour[1];
+    dst->crashed_sprite_base = src->crashed_sprite_base;
+    dst->velocity_x = src->velocity_x;
+    dst->velocity_y = src->velocity_y;
+    dst->velocity_z = src->velocity_z;
+    dst->acceleration_x = src->acceleration_x;
+    dst->acceleration_y = src->acceleration_y;
+    dst->acceleration_z = src->acceleration_z;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteJumpingFountain* dst, const JumpingFountain* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->num_ticks_alive = src->NumTicksAlive;
+    dst->frame = src->frame;
+    dst->fountain_flags = src->FountainFlags;
+    dst->target_x = src->TargetX;
+    dst->target_y = src->TargetY;
+    dst->target_y = src->TargetY;
+    dst->iteration = src->Iteration;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteBalloon* dst, const Balloon* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->popped = src->popped;
+    dst->time_to_move = src->time_to_move;
+    dst->frame = src->frame;
+    dst->colour = src->colour;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteDuck* dst, const Duck* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->frame = src->frame;
+    dst->target_x = src->target_x;
+    dst->target_y = src->target_y;
+    dst->state = EnumValue(src->state);
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteParticle* dst, const ExplosionCloud* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->frame = src->frame;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteParticle* dst, const ExplosionFlare* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->frame = src->frame;
+}
+template<> void S6Exporter::ExportEntity(RCT12SpriteParticle* dst, const CrashSplashParticle* src)
+{
+    ExportEntityCommonProperties(dst, src);
+    dst->type = EnumValue(src->SubType);
+    dst->frame = src->frame;
 }
 
-void S6Exporter::ExportSpriteLitter(RCT12SpriteLitter* dst, const Litter* src)
+template<> void S6Exporter::ExportEntity(RCT12SpriteLitter* dst, const Litter* src)
 {
-    ExportSpriteCommonProperties(dst, src);
+    ExportEntityCommonProperties(dst, src);
     dst->type = EnumValue(src->SubType);
     dst->creationTick = src->creationTick;
+}
+
+void S6Exporter::ExportEntities()
+{
+    // Clear everything to free
+    for (int32_t i = 0; i < RCT2_MAX_SPRITES; i++)
+    {
+        auto& entity = _s6.sprites[i];
+        std::memset(&entity, 0, sizeof(entity));
+        entity.unknown.sprite_identifier = SpriteIdentifier::Null;
+        entity.unknown.sprite_index = i;
+        entity.unknown.linked_list_type_offset = RCT12EntityLinkListOffset::Free;
+    }
+
+    for (auto* entity : EntityList<Guest>(EntityListId::Peep))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].peep, entity);
+    }
+    for (auto* entity : EntityList<Staff>(EntityListId::Peep))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].peep, entity);
+    }
+    for (auto* entity : EntityList<Vehicle>(EntityListId::Vehicle))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].vehicle, entity);
+    }
+    for (auto* entity : EntityList<Vehicle>(EntityListId::TrainHead))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].vehicle, entity);
+    }
+    for (auto* entity : EntityList<Litter>(EntityListId::Litter))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].litter, entity);
+    }
+    for (auto* entity : EntityList<Duck>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].duck, entity);
+    }
+    for (auto* entity : EntityList<SteamParticle>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].steam_particle, entity);
+    }
+    for (auto* entity : EntityList<MoneyEffect>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].money_effect, entity);
+    }
+    for (auto* entity : EntityList<VehicleCrashParticle>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].crashed_vehicle_particle, entity);
+    }
+    for (auto* entity : EntityList<JumpingFountain>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].jumping_fountain, entity);
+    }
+    for (auto* entity : EntityList<Balloon>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].balloon, entity);
+    }
+    for (auto* entity : EntityList<ExplosionCloud>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].misc_particle, entity);
+    }
+    for (auto* entity : EntityList<ExplosionFlare>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].misc_particle, entity);
+    }
+    for (auto* entity : EntityList<CrashSplashParticle>(EntityListId::Misc))
+    {
+        ExportEntity(&_s6.sprites[entity->sprite_index].misc_particle, entity);
+    }
+
+    RebuildEntityLinks();
 }
 
 void S6Exporter::ExportBanners()
@@ -1574,10 +1602,7 @@ void S6Exporter::ExportTileElement(RCT12TileElement* dst, TileElement* src)
             auto dst2 = dst->AsTrack();
             auto src2 = src->AsTrack();
 
-            auto trackType = src2->GetTrackType();
-            if (trackType == TrackElemType::RotationControlToggle)
-                trackType = TrackElemType::RotationControlToggleAlias;
-            // SV6 track type is uint8_t; we have aliased Rotation Control (256) to Booster (100) to allow this
+            auto trackType = OpenRCT2TrackTypeToRCT2(src2->GetTrackType());
             dst2->SetTrackType(static_cast<uint8_t>(trackType));
             dst2->SetSequenceIndex(src2->GetSequenceIndex());
             dst2->SetRideIndex(src2->GetRideIndex());

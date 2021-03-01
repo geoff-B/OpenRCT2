@@ -18,15 +18,23 @@
 - Feature: [#13613] Add single-rail roller coaster (Rocky Mountain Construction Raptor).
 - Feature: [#13614] Add terrain surfaces from RollerCoaster Tycoon 1.
 - Feature: [#13675] [Plugin] Add context.setInterval and context.setTimeout.
+- Feature: [#13848] Replace shortcut engine allowing multiple bindings from different input devices.
 - Feature: [#13927] [Plugin] Add isVisible and text box widget.
 - Feature: [#13969] [Plugin] Add APIs for editing title sequences.
-- Feature: [#14002] [Plugin] Feature: Use allowed_hosts when checking the binding IP for listening
+- Feature: [#14002] [Plugin] Use allowed_hosts when checking the binding IP for listening.
+- Feature: [#14059] [Plugin] Add optional filter to custom tools.
+- Feature: [#14142] [Plugin] Add option for taking transparent screenshots.
+- Feature: [#14171] [Plugin] Add API for getting network traffic statistics.
+- Feature: [#14171] [Plugin] Add API for creating custom widgets.
+- Feature: [#14171] [Plugin] Add API for drawing graphics for custom widgets.
+- Feature: [#14171] [Plugin] Add click event to spinners and allow them to be held down.
 - Change: [#13346] [Plugin] Renamed FootpathScenery to FootpathAddition, fix typos.
 - Change: [#13857] Change Rotation Control Toggle to track element number 256
 - Fix: [#4605, #11912] Water palettes are not updated properly when selected in Object Selection.
 - Fix: [#7772] Hacked vehicles may incorrectly not mark a vehicle object as in use causing accidental removal when remove_unused_objects is used.
 - Fix: [#9631, #10716] Banners drawing glitches when there are more than 32 on the screen at once.
 - Fix: [#11438] Freeze when shrinking map size.
+- Fix: [#11484] Console output does not properly return to column 0 after line ending.
 - Fix: [#12895] Mechanics are called to repair rides that have already been fixed.
 - Fix: [#13102] Underflow on height chart (Ride measurements).
 - Fix: [#13234] Incorrect vehicle mass after using Remove All Guests cheat.
@@ -47,6 +55,7 @@
 - Fix: [#13937] Pathfinding gets confused when two entrances/exits from the same ride are on top of each other.
 - Fix: [#13961] Animation for Guests sliding down Spiral Slide is missing on close zoom levels.
 - Fix: [#14012] 'Finish 5 roller coasters' goal is listed incorrectly in scenario selector.
+- Fix: [#14095] Holding down [-][+] buttons does not decrease/increase number of circuits.
 - Improved: [#6022] Allow up to 128 ride objects to be selected in track designer.
 - Improved: [#12917] Changed peep movement so that they stay more spread out over the full width of single tile paths.
 - Improved: [#13386] A GUI error message is now displayed if the language files are missing.

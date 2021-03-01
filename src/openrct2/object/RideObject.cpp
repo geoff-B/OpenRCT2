@@ -24,6 +24,7 @@
 #include "../ride/RideData.h"
 #include "../ride/ShopItem.h"
 #include "../ride/Track.h"
+#include "../ride/Vehicle.h"
 #include "ObjectRepository.h"
 
 #include <algorithm>
@@ -404,7 +405,7 @@ void RideObject::SetRepositoryItem(ObjectRepositoryItem* item) const
 {
     // Find the first non-null ride type, to be used when checking the ride group and determining the category.
     uint8_t firstRideType = ride_entry_get_first_non_null_ride_type(&_legacyType);
-    uint8_t category = RideTypeDescriptors[firstRideType].Category;
+    uint8_t category = GetRideTypeDescriptor(firstRideType).Category;
 
     for (int32_t i = 0; i < RCT2_MAX_RIDE_TYPES_PER_RIDE_ENTRY; i++)
     {

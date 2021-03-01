@@ -11,6 +11,7 @@
 #include <openrct2-ui/interface/Widget.h>
 #include <openrct2-ui/windows/Window.h>
 #include <openrct2/Context.h>
+#include <openrct2/core/Console.hpp>
 #include <openrct2/core/Http.h>
 #include <openrct2/core/Json.hpp>
 #include <openrct2/core/String.hpp>
@@ -153,7 +154,7 @@ private:
     {
         try
         {
-            std::printf("Downloading %s\n", url.c_str());
+            Console::WriteLine("Downloading %s", url.c_str());
             Http::Request req;
             req.method = Http::Method::GET;
             req.url = url;
@@ -175,14 +176,14 @@ private:
                 }
                 else
                 {
-                    std::printf("  Failed to download %s\n", name.c_str());
+                    Console::Error::WriteLine("  Failed to download %s", name.c_str());
                 }
                 QueueNextDownload();
             });
         }
         catch (const std::exception&)
         {
-            std::printf("  Failed to download %s\n", name.c_str());
+            Console::Error::WriteLine("  Failed to download %s", name.c_str());
             QueueNextDownload();
         }
     }
@@ -226,19 +227,20 @@ private:
                 }
                 else if (response.status == Http::Status::NotFound)
                 {
-                    std::printf("  %s not found\n", name.c_str());
+                    Console::Error::WriteLine("  %s not found", name.c_str());
                     QueueNextDownload();
                 }
                 else
                 {
-                    std::printf("  %s query failed (status %d)\n", name.c_str(), static_cast<int32_t>(response.status));
+                    Console::Error::WriteLine(
+                        "  %s query failed (status %d)", name.c_str(), static_cast<int32_t>(response.status));
                     QueueNextDownload();
                 }
             });
         }
         catch (const std::exception&)
         {
-            std::printf("  Failed to query %s\n", name.c_str());
+            Console::Error::WriteLine("  Failed to query %s", name.c_str());
         }
     }
 };
@@ -539,14 +541,13 @@ static void window_object_load_error_paint(rct_window* w, rct_drawpixelinfo* dpi
     // Draw explanatory message
     auto ft = Formatter();
     ft.Add<rct_string_id>(STR_OBJECT_ERROR_WINDOW_EXPLANATION);
-    gfx_draw_string_left_wrapped(
-        dpi, ft.Data(), w->windowPos + ScreenCoordsXY{ 5, 18 }, WW - 10, STR_BLACK_STRING, COLOUR_BLACK);
+    DrawTextWrapped(dpi, w->windowPos + ScreenCoordsXY{ 5, 18 }, WW - 10, STR_BLACK_STRING, ft);
 
     // Draw file name
     ft = Formatter();
     ft.Add<rct_string_id>(STR_OBJECT_ERROR_WINDOW_FILE);
     ft.Add<utf8*>(file_path.c_str());
-    DrawTextEllipsised(dpi, { w->windowPos.x + 5, w->windowPos.y + 43 }, WW - 5, STR_BLACK_STRING, ft, COLOUR_BLACK);
+    DrawTextEllipsised(dpi, { w->windowPos.x + 5, w->windowPos.y + 43 }, WW - 5, STR_BLACK_STRING, ft);
 }
 
 static void window_object_load_error_scrollpaint(rct_window* w, rct_drawpixelinfo* dpi, int32_t scrollIndex)
@@ -577,15 +578,15 @@ static void window_object_load_error_scrollpaint(rct_window* w, rct_drawpixelinf
 
         // Draw the actual object entry's name...
         screenCoords.x = NAME_COL_LEFT - 3;
-        gfx_draw_string(dpi, strndup(_invalid_entries[i].name, 8), COLOUR_DARK_GREEN, screenCoords);
+        gfx_draw_string(dpi, screenCoords, strndup(_invalid_entries[i].name, 8), { COLOUR_DARK_GREEN });
 
         // ... source game ...
         rct_string_id sourceStringId = object_manager_get_source_game_string(_invalid_entries[i].GetSourceGame());
-        gfx_draw_string_left(dpi, sourceStringId, nullptr, COLOUR_DARK_GREEN, { SOURCE_COL_LEFT - 3, screenCoords.y });
+        DrawTextBasic(dpi, { SOURCE_COL_LEFT - 3, screenCoords.y }, sourceStringId, {}, { COLOUR_DARK_GREEN });
 
         // ... and type
         rct_string_id type = get_object_type_string(&_invalid_entries[i]);
-        gfx_draw_string_left(dpi, type, nullptr, COLOUR_DARK_GREEN, { TYPE_COL_LEFT - 3, screenCoords.y });
+        DrawTextBasic(dpi, { TYPE_COL_LEFT - 3, screenCoords.y }, type, {}, { COLOUR_DARK_GREEN });
     }
 }
 

@@ -593,7 +593,7 @@ struct Peep : SpriteBase
     uint8_t Toilet;
     uint8_t Mass;
     uint8_t TimeToConsume;
-    IntensityRange Intensity;
+    IntensityRange Intensity{ 0 };
     PeepNauseaTolerance NauseaTolerance;
     uint8_t WindowInvalidateFlags;
     money16 PaidOnDrink;
@@ -728,9 +728,6 @@ struct Peep : SpriteBase
     uint64_t ItemFlags;
 
 public: // Peep
-    Guest* AsGuest();
-    Staff* AsStaff();
-
     void Update();
     std::optional<CoordsXY> UpdateAction(int16_t& xy_distance);
     std::optional<CoordsXY> UpdateAction();
@@ -765,6 +762,10 @@ public: // Peep
     void RemoveItem(ShopItem item);
     void GiveItem(ShopItem item);
     bool HasItem(ShopItem peepItem) const;
+
+    void SetDestination(const CoordsXY& coords);
+    void SetDestination(const CoordsXY& coords, int32_t tolerance);
+    CoordsXY GetDestination() const;
 
     // TODO: Make these private again when done refactoring
 public: // Peep

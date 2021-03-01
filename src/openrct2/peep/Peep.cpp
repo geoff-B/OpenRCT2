@@ -321,16 +321,6 @@ template<> bool SpriteBase::Is<Peep>() const
     return sprite_identifier == SpriteIdentifier::Peep;
 }
 
-Guest* Peep::AsGuest()
-{
-    return AssignedPeepType == PeepType::Guest ? static_cast<Guest*>(this) : nullptr;
-}
-
-Staff* Peep::AsStaff()
-{
-    return AssignedPeepType == PeepType::Staff ? static_cast<Staff*>(this) : nullptr;
-}
-
 uint8_t Peep::GetNextDirection() const
 {
     return NextFlags & PEEP_NEXT_FLAG_DIRECTION_MASK;
@@ -457,14 +447,14 @@ void peep_update_all()
  */
 static void peep_128_tick_update(Peep* peep, int32_t index)
 {
-    auto guest = peep->AsGuest();
+    auto* guest = peep->As<Guest>();
     if (guest != nullptr)
     {
         guest->Tick128UpdateGuest(index);
     }
     else
     {
-        auto staff = peep->AsStaff();
+        auto* staff = peep->As<Staff>();
         if (staff != nullptr)
         {
             staff->Tick128UpdateStaff();
@@ -606,10 +596,11 @@ std::optional<CoordsXY> Peep::UpdateAction(int16_t& xy_distance)
         Action = PeepActionType::None2;
     }
 
-    CoordsXY diffrenceLoc = { x - DestinationX, y - DestinationY };
+    CoordsXY differenceLoc = GetLocation();
+    differenceLoc -= GetDestination();
 
-    int32_t x_delta = abs(diffrenceLoc.x);
-    int32_t y_delta = abs(diffrenceLoc.y);
+    int32_t x_delta = abs(differenceLoc.x);
+    int32_t y_delta = abs(differenceLoc.y);
 
     xy_distance = x_delta + y_delta;
 
@@ -623,7 +614,7 @@ std::optional<CoordsXY> Peep::UpdateAction(int16_t& xy_distance)
         if (x_delta < y_delta)
         {
             nextDirection = 8;
-            if (diffrenceLoc.y >= 0)
+            if (differenceLoc.y >= 0)
             {
                 nextDirection = 24;
             }
@@ -631,7 +622,7 @@ std::optional<CoordsXY> Peep::UpdateAction(int16_t& xy_distance)
         else
         {
             nextDirection = 16;
-            if (diffrenceLoc.x >= 0)
+            if (differenceLoc.x >= 0)
             {
                 nextDirection = 0;
             }
@@ -744,7 +735,7 @@ void peep_window_state_update(Peep* peep)
 
 void Peep::Pickup()
 {
-    auto guest = AsGuest();
+    auto* guest = As<Guest>();
     if (guest != nullptr)
     {
         guest->RemoveFromRide();
@@ -839,7 +830,7 @@ std::unique_ptr<GameActions::Result> Peep::Place(const TileCoordsXYZ& location, 
  */
 void peep_sprite_remove(Peep* peep)
 {
-    auto guest = peep->AsGuest();
+    auto* guest = peep->As<Guest>();
     if (guest != nullptr)
     {
         guest->RemoveFromRide();
@@ -953,7 +944,7 @@ void Peep::UpdateFalling()
                         // Looks like we are drowning!
                         MoveTo({ x, y, height });
 
-                        auto guest = AsGuest();
+                        auto* guest = As<Guest>();
                         if (guest != nullptr)
                         {
                             // Drop balloon if held
@@ -1028,9 +1019,7 @@ void Peep::Update1()
         SetState(PeepState::Patrolling);
     }
 
-    DestinationX = x;
-    DestinationY = y;
-    DestinationTolerance = 10;
+    SetDestination(GetLocation(), 10);
     PeepDirection = sprite_direction >> 3;
 }
 
@@ -1149,7 +1138,7 @@ void Peep::Update()
     StepProgress = carryCheck;
     if (carryCheck <= 255)
     {
-        auto guest = AsGuest();
+        auto* guest = As<Guest>();
         if (guest != nullptr)
         {
             guest->UpdateEasterEggInteractions();
@@ -1174,14 +1163,14 @@ void Peep::Update()
                 break;
             default:
             {
-                auto guest = AsGuest();
+                auto* guest = As<Guest>();
                 if (guest != nullptr)
                 {
                     guest->UpdateGuest();
                 }
                 else
                 {
-                    auto staff = AsStaff();
+                    auto* staff = As<Staff>();
                     if (staff != nullptr)
                     {
                         staff->UpdateStaff(stepsToTake);
@@ -1226,7 +1215,7 @@ void peep_problem_warnings_update()
                     break;
                 }
                 ride = get_ride(peep->GuestHeadingToRideId);
-                if (ride != nullptr && !ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_FLAT_RIDE))
+                if (ride != nullptr && !ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_FLAT_RIDE))
                     hunger_counter++;
                 break;
 
@@ -1237,7 +1226,7 @@ void peep_problem_warnings_update()
                     break;
                 }
                 ride = get_ride(peep->GuestHeadingToRideId);
-                if (ride != nullptr && !ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_SELLS_DRINKS))
+                if (ride != nullptr && !ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_SELLS_DRINKS))
                     thirst_counter++;
                 break;
 
@@ -1248,7 +1237,7 @@ void peep_problem_warnings_update()
                     break;
                 }
                 ride = get_ride(peep->GuestHeadingToRideId);
-                if (ride != nullptr && !ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_IS_TOILET))
+                if (ride != nullptr && !ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_IS_TOILET))
                     toilet_counter++;
                 break;
 
@@ -1805,7 +1794,8 @@ void Peep::FormatActionTo(Formatter& ft) const
             auto ride = get_ride(CurrentRide);
             if (ride != nullptr)
             {
-                ft.Add<rct_string_id>(ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_IN_RIDE) ? STR_IN_RIDE : STR_ON_RIDE);
+                ft.Add<rct_string_id>(
+                    ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_IN_RIDE) ? STR_IN_RIDE : STR_ON_RIDE);
                 ride->FormatNameTo(ft);
             }
             else
@@ -2287,9 +2277,8 @@ static bool peep_update_queue_position(Peep* peep, PeepActionType previous_actio
 static void peep_return_to_centre_of_tile(Peep* peep)
 {
     peep->PeepDirection = direction_reverse(peep->PeepDirection);
-    peep->DestinationX = (peep->x & 0xFFE0) + 16;
-    peep->DestinationY = (peep->y & 0xFFE0) + 16;
-    peep->DestinationTolerance = 5;
+    auto destination = peep->GetLocation().ToTileCentre();
+    peep->SetDestination(destination, 5);
 }
 
 /**
@@ -2340,7 +2329,7 @@ static bool peep_interact_with_entrance(Peep* peep, const CoordsXYE& coords, uin
         if (ride == nullptr)
             return false;
 
-        auto guest = peep->AsGuest();
+        auto* guest = peep->As<Guest>();
         if (guest == nullptr)
         {
             // Default staff behaviour attempting to enter a
@@ -2413,7 +2402,7 @@ static bool peep_interact_with_entrance(Peep* peep, const CoordsXYE& coords, uin
     else
     {
         // PARK_ENTRANCE
-        auto guest = peep->AsGuest();
+        auto* guest = peep->As<Guest>();
         if (guest == nullptr)
         {
             // Staff cannot leave the park, so go back.
@@ -2454,9 +2443,8 @@ static bool peep_interact_with_entrance(Peep* peep, const CoordsXYE& coords, uin
                 }
             }
 
-            peep->DestinationX += CoordsDirectionDelta[peep->PeepDirection].x;
-            peep->DestinationY += CoordsDirectionDelta[peep->PeepDirection].y;
-            peep->DestinationTolerance = 9;
+            auto destination = peep->GetDestination() + CoordsDirectionDelta[peep->PeepDirection];
+            peep->SetDestination(destination, 9);
             peep->MoveTo({ coords, peep->z });
             peep->SetState(PeepState::LeavingPark);
 
@@ -2592,9 +2580,9 @@ static bool peep_interact_with_entrance(Peep* peep, const CoordsXYE& coords, uin
         window_invalidate_by_number(WC_PARK_INFORMATION, 0);
 
         peep->Var37 = 1;
-        peep->DestinationX += CoordsDirectionDelta[peep->PeepDirection].x;
-        peep->DestinationY += CoordsDirectionDelta[peep->PeepDirection].y;
-        peep->DestinationTolerance = 7;
+        auto destination = peep->GetDestination();
+        destination += CoordsDirectionDelta[peep->PeepDirection];
+        peep->SetDestination(destination, 7);
         peep->MoveTo({ coords, peep->z });
     }
     return true;
@@ -2771,7 +2759,7 @@ static void peep_interact_with_path(Peep* peep, const CoordsXYE& coords)
         }
     }
 
-    auto guest = peep->AsGuest();
+    auto* guest = peep->As<Guest>();
     if (guest != nullptr && tile_element->AsPath()->IsQueue())
     {
         auto rideIndex = tile_element->AsPath()->GetRideIndex();
@@ -2876,10 +2864,10 @@ static bool peep_interact_with_shop(Peep* peep, const CoordsXYE& coords)
 {
     ride_id_t rideIndex = coords.element->AsTrack()->GetRideIndex();
     auto ride = get_ride(rideIndex);
-    if (ride == nullptr || !ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_IS_SHOP))
+    if (ride == nullptr || !ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_IS_SHOP))
         return false;
 
-    auto guest = peep->AsGuest();
+    auto* guest = peep->As<Guest>();
     if (guest == nullptr)
     {
         peep_return_to_centre_of_tile(peep);
@@ -2913,7 +2901,7 @@ static bool peep_interact_with_shop(Peep* peep, const CoordsXYE& coords)
         return true;
     }
 
-    if (ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_PEEP_SHOULD_GO_INSIDE_FACILITY))
+    if (ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_PEEP_SHOULD_GO_INSIDE_FACILITY))
     {
         peep->TimeLost = 0;
         if (!guest->ShouldGoOnRide(ride, 0, false, false))
@@ -2934,10 +2922,7 @@ static bool peep_interact_with_shop(Peep* peep, const CoordsXYE& coords)
         }
 
         auto coordsCentre = coords.ToTileCentre();
-        peep->DestinationX = coordsCentre.x;
-        peep->DestinationY = coordsCentre.y;
-        peep->DestinationTolerance = 3;
-
+        peep->SetDestination(coordsCentre, 3);
         peep->CurrentRide = rideIndex;
         peep->SetState(PeepState::EnteringRide);
         peep->RideSubState = PeepRideSubState::ApproachShop;
@@ -2949,8 +2934,9 @@ static bool peep_interact_with_shop(Peep* peep, const CoordsXYE& coords)
             auto ft = Formatter();
             peep->FormatNameTo(ft);
             ride->FormatNameTo(ft);
-            rct_string_id string_id = ride_type_has_flag(ride->type, RIDE_TYPE_FLAG_IN_RIDE) ? STR_PEEP_TRACKING_PEEP_IS_IN_X
-                                                                                             : STR_PEEP_TRACKING_PEEP_IS_ON_X;
+            rct_string_id string_id = ride->GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_IN_RIDE)
+                ? STR_PEEP_TRACKING_PEEP_IS_IN_X
+                : STR_PEEP_TRACKING_PEEP_IS_ON_X;
             if (gConfigNotifications.guest_used_facility)
             {
                 News::AddItemToQueue(News::ItemType::PeepOnRide, string_id, peep->sprite_index, ft);
@@ -3000,14 +2986,14 @@ void Peep::PerformNextAction(uint8_t& pathing_result, TileElement*& tile_result)
         pathing_result |= PATHING_DESTINATION_REACHED;
         uint8_t result = 0;
 
-        auto guest = AsGuest();
+        auto* guest = As<Guest>();
         if (guest != nullptr)
         {
             result = guest_path_finding(guest);
         }
         else
         {
-            auto staff = AsStaff();
+            auto* staff = As<Staff>();
             result = staff->DoPathFinding();
         }
 
@@ -3380,4 +3366,21 @@ void Peep::GiveItem(ShopItem item)
 bool Peep::HasItem(ShopItem peepItem) const
 {
     return GetItemFlags() & EnumToFlag(peepItem);
+}
+
+void Peep::SetDestination(const CoordsXY& coords)
+{
+    DestinationX = static_cast<uint16_t>(coords.x);
+    DestinationY = static_cast<uint16_t>(coords.y);
+}
+
+void Peep::SetDestination(const CoordsXY& coords, int32_t tolerance)
+{
+    SetDestination(coords);
+    DestinationTolerance = tolerance;
+}
+
+CoordsXY Peep::GetDestination() const
+{
+    return CoordsXY{ DestinationX, DestinationY };
 }

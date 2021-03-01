@@ -22,6 +22,7 @@
 #include "actions/LoadOrQuitAction.h"
 #include "audio/audio.h"
 #include "config/Config.h"
+#include "core/Console.hpp"
 #include "core/FileScanner.h"
 #include "core/Path.hpp"
 #include "interface/Colour.h"
@@ -587,7 +588,7 @@ void game_unload_scripts()
  */
 void reset_all_sprite_quadrant_placements()
 {
-    for (size_t i = 0; i < MAX_SPRITES; i++)
+    for (size_t i = 0; i < MAX_ENTITIES; i++)
     {
         auto* spr = GetEntity(i);
         if (spr != nullptr && spr->sprite_identifier != SpriteIdentifier::Null)
@@ -762,7 +763,7 @@ void game_autosave()
     }
 
     if (!scenario_save(path, saveFlags))
-        std::fprintf(stderr, "Could not autosave the scenario. Is the save folder writeable?\n");
+        Console::Error::WriteLine("Could not autosave the scenario. Is the save folder writeable?");
 }
 
 static void game_load_or_quit_no_save_prompt_callback(int32_t result, const utf8* path)

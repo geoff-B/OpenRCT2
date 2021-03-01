@@ -18,7 +18,6 @@
 #include "../world/Banner.h"
 #include "../world/Climate.h"
 #include "../world/MapAnimation.h"
-#include "../world/Sprite.h"
 
 constexpr const uint16_t RCT1_MAX_TILE_ELEMENTS = 0xC000;
 constexpr const uint16_t RCT1_MAX_SPRITES = 5000;
@@ -1283,5 +1282,7 @@ enum
 
 void load_from_sv4(const char* path);
 void load_from_sc4(const char* path);
+
+track_type_t RCT1TrackTypeToOpenRCT2(RCT12TrackType origTrackType, uint8_t rideType);
 
 #endif

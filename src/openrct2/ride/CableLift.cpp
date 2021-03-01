@@ -12,6 +12,7 @@
 #include "../audio/audio.h"
 #include "../rct12/RCT12.h"
 #include "../util/Util.h"
+#include "../world/EntityList.h"
 #include "../world/Sprite.h"
 #include "Ride.h"
 #include "RideData.h"
@@ -69,7 +70,7 @@ Vehicle* cable_lift_segment_create(
 
     z = z * COORDS_Z_STEP;
     current->TrackLocation = { x, y, z };
-    z += RideTypeDescriptors[ride.type].Heights.VehicleZOffset;
+    z += ride.GetRideTypeDescriptor().Heights.VehicleZOffset;
 
     current->MoveTo({ 16, 16, z });
     current->SetTrackType(TrackElemType::CableLiftHill);
@@ -270,7 +271,7 @@ bool Vehicle::CableLiftUpdateTrackMotionForwards()
         auto unk = CoordsXYZ{ moveInfo->x, moveInfo->y, moveInfo->z } + TrackLocation;
 
         uint8_t bx = 0;
-        unk.z += RideTypeDescriptors[curRide->type].Heights.VehicleZOffset;
+        unk.z += GetRideTypeDescriptor(curRide->type).Heights.VehicleZOffset;
         if (unk.x != unk_F64E20.x)
             bx |= (1 << 0);
         if (unk.y != unk_F64E20.y)
@@ -336,7 +337,7 @@ bool Vehicle::CableLiftUpdateTrackMotionBackwards()
         auto unk = CoordsXYZ{ moveInfo->x, moveInfo->y, moveInfo->z } + TrackLocation;
 
         uint8_t bx = 0;
-        unk.z += RideTypeDescriptors[curRide->type].Heights.VehicleZOffset;
+        unk.z += GetRideTypeDescriptor(curRide->type).Heights.VehicleZOffset;
         if (unk.x != unk_F64E20.x)
             bx |= (1 << 0);
         if (unk.y != unk_F64E20.y)

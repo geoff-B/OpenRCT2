@@ -496,8 +496,9 @@ static void window_track_place_paint(rct_window* w, rct_drawpixelinfo* dpi)
     // Price
     if (_window_track_place_last_cost != MONEY32_UNDEFINED && !(gParkFlags & PARK_FLAGS_NO_MONEY))
     {
-        gfx_draw_string_centred(
-            dpi, STR_COST_LABEL, w->windowPos + ScreenCoordsXY{ 88, 94 }, COLOUR_BLACK, &_window_track_place_last_cost);
+        DrawTextBasic(
+            dpi, w->windowPos + ScreenCoordsXY{ 88, 94 }, STR_COST_LABEL, &_window_track_place_last_cost,
+            { TextAlignment::CENTRE });
     }
 }
 
@@ -537,8 +538,6 @@ static void window_track_place_draw_mini_preview_track(
 {
     const uint8_t rotation = (_currentTrackPieceDirection + get_current_rotation()) & 3;
 
-    const rct_preview_track** trackBlockArray = (ride_type_has_flag(td6->type, RIDE_TYPE_FLAG_HAS_TRACK)) ? TrackBlocks
-                                                                                                          : FlatRideTrackBlocks;
     CoordsXY curTrackStart = origin;
     uint8_t curTrackRotation = rotation;
     for (const auto& trackElement : td6->track_elements)
@@ -550,7 +549,7 @@ static void window_track_place_draw_mini_preview_track(
         }
 
         // Follow a single track piece shape
-        const rct_preview_track* trackBlock = trackBlockArray[trackType];
+        const rct_preview_track* trackBlock = TrackBlocks[trackType];
         while (trackBlock->index != 255)
         {
             auto rotatedAndOffsetTrackBlock = curTrackStart + CoordsXY{ trackBlock->x, trackBlock->y }.Rotate(curTrackRotation);
