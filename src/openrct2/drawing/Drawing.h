@@ -688,7 +688,7 @@ void gfx_draw_pickedup_peep(rct_drawpixelinfo* dpi);
 
 // line
 void gfx_draw_line(rct_drawpixelinfo* dpi, const ScreenLine& line, int32_t colour);
-void gfx_draw_line_software(rct_drawpixelinfo* dpi, int32_t x1, int32_t y1, int32_t x2, int32_t y2, int32_t colour);
+void gfx_draw_line_software(rct_drawpixelinfo* dpi, const ScreenLine& line, int32_t colour);
 void gfx_draw_dashed_line(
     rct_drawpixelinfo* dpi, const ScreenLine& screenLine, const int32_t dashedLineSegmentLength, const int32_t color);
 
@@ -741,7 +741,7 @@ void gfx_draw_string_left_centred(
     rct_drawpixelinfo* dpi, rct_string_id format, void* args, colour_t colour, const ScreenCoordsXY& coords);
 void draw_string_centred_raw(
     rct_drawpixelinfo* dpi, const ScreenCoordsXY& coords, int32_t numLines, char* text, FontSpriteBase fontSpriteBase);
-void gfx_draw_string_centred_wrapped_partial(
+void DrawNewsTicker(
     rct_drawpixelinfo* dpi, const ScreenCoordsXY& coords, int32_t width, colour_t colour, rct_string_id format, void* args,
     int32_t ticks);
 void gfx_draw_string_with_y_offsets(

@@ -10,7 +10,7 @@ An open-source re-implementation of RollerCoaster Tycoon 2. A construction and m
 ### Download
 | Latest release | Latest development build |
 |----------------|--------------------------|
-| [![OpenRCT2.org](https://img.shields.io/badge/master-v0.3.2-green.svg)](https://openrct2.org/downloads/master/latest) | [![OpenRCT2.org](https://img.shields.io/badge/develop-v0.3.2+-blue.svg)](https://openrct2.org/downloads/develop/latest) |
+| [![OpenRCT2.org](https://img.shields.io/badge/master-v0.3.3-green.svg)](https://openrct2.org/downloads/master/latest) | [![OpenRCT2.org](https://img.shields.io/badge/develop-v0.3.3+-blue.svg)](https://openrct2.org/downloads/develop/latest) |
 
 ---
 
@@ -147,12 +147,7 @@ msbuild openrct2.proj /t:PublishPortable
 The recommended way of building OpenRCT2 for macOS is with Xcode. The Xcode build will create a self-contained application bundles which include all the necessary game files and dependencies. Open the project file OpenRCT2.xcodeproj in Xcode and build from there. Building this way will handle the dependencies for you automatically. You can also invoke an Xcode build from the command line using `xcodebuild`.
 
 #### CMake:
-A command line version of OpenRCT2 can be built using CMake. This type of build requires you to provide the dependencies yourself. The supported method of doing this is with [Homebrew](https://brew.sh). Once you have Homebrew installed, you can download all the required libraries with this command:
-```
-brew install cmake duktape freetype icu4c libpng libzip nlohmann-json openssl pkg-config sdl2 speexdsp
-```
-
-Once you have the dependencies installed, you can build the project using CMake using the following commands:
+A command line version of OpenRCT2 can be built using CMake. CMake will retrieve the dependences from [Dependencies](https://github.com/OpenRCT2/Dependencies/) automatically. You can build the project using CMake using the following commands:
 ```
 mkdir build
 cd build

@@ -19,6 +19,11 @@ if (CCache_FOUND)
     endif (OPENRCT2_USE_CCACHE)
 endif (CCache_FOUND)
 
+if (APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.14")
+endif ()
+
 project(openrct2 CXX)
 
 include(cmake/platform.cmake)
@@ -36,13 +41,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}")
-set(CMAKE_MACOSX_RPATH 1)
 
 set(TITLE_SEQUENCE_URL  "https://github.com/OpenRCT2/title-sequences/releases/download/v0.1.2c/title-sequences.zip")
 set(TITLE_SEQUENCE_SHA1 "304d13a126c15bf2c86ff13b81a2f2cc1856ac8d")
 
-set(OBJECTS_URL  "https://github.com/OpenRCT2/objects/releases/download/v1.0.20/objects.zip")
-set(OBJECTS_SHA1 "151424d24b1d49a167932b58319bedaa6ec368e9")
+set(OBJECTS_URL  "https://github.com/OpenRCT2/objects/releases/download/v1.0.21/objects.zip")
+set(OBJECTS_SHA1 "c38af45d51a6e440386180feacf76c64720b6ac5")
 
 set(REPLAYS_URL  "https://github.com/OpenRCT2/replays/releases/download/v0.0.31/replays.zip")
 set(REPLAYS_SHA1 "693BDD6F4B7C3B312AABEBCAEA4800FE97B33527")
@@ -55,6 +59,7 @@ option(DOWNLOAD_TITLE_SEQUENCES "Download title sequences during installation." 
 option(DOWNLOAD_OBJECTS "Download objects during installation." ON)
 CMAKE_DEPENDENT_OPTION(DOWNLOAD_REPLAYS "Download replays during installation." ON
     "WITH_TESTS" OFF)
+option(MACOS_USE_DEPENDENCIES "Use OpenRCT2 dependencies instead of system libraries" ON)
 
 # Options
 option(STATIC "Create a static build.")
@@ -93,6 +98,54 @@ endif ()
 
 if (APPIMAGE)
     set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+endif ()
+
+if (APPLE AND MACOS_USE_DEPENDENCIES)
+    # if we're building on macOS, then we need the dependencies
+    # update dylibs
+    set(MACOS_DYLIBS_VERSION "28")
+    set(MACOS_DYLIBS_ZIPFILE "openrct2-libs-v${MACOS_DYLIBS_VERSION}-x64-macos-dylibs.zip")
+    set(MACOS_DYLIBS_DIR "${ROOT_DIR}/lib/macos")
+    set(MACOS_DYLIBS_URL "https://github.com/OpenRCT2/Dependencies/releases/download/v${MACOS_DYLIBS_VERSION}/${MACOS_DYLIBS_ZIPFILE}")
+
+    if (NOT EXISTS ${MACOS_DYLIBS_DIR})
+        set(DOWNLOAD_DYLIBS 1)
+    else ()
+        file(READ "${MACOS_DYLIBS_DIR}/libversion" MACOS_DYLIBS_CACHED_VERSION)
+        if (NOT ${MACOS_DYLIBS_CACHED_VERSION} STREQUAL ${MACOS_DYLIBS_VERSION})
+        message("Cached macOS dylibs out of date")
+        set(DOWNLOAD_DYLIBS 1)
+        endif ()
+    endif ()
+    if (DOWNLOAD_DYLIBS)
+        message("Downloading macOS dylibs")
+        file(DOWNLOAD "${MACOS_DYLIBS_URL}" "${MACOS_DYLIBS_DIR}/${MACOS_DYLIBS_ZIPFILE}")
+        file(ARCHIVE_EXTRACT
+            INPUT "${MACOS_DYLIBS_DIR}/${MACOS_DYLIBS_ZIPFILE}"
+            DESTINATION "${MACOS_DYLIBS_DIR}"
+        )
+        file(WRITE
+            "${MACOS_DYLIBS_DIR}/libversion"
+            "${MACOS_DYLIBS_VERSION}"
+        )
+        file(REMOVE "${MACOS_DYLIBS_DIR}/${MACOS_DYLIBS_ZIPFILE}")
+    endif ()
+    # TODO: make the above routine a function, use it for objects, title sequences, and languages
+
+    set(CMAKE_MACOSX_RPATH 1)
+    list(APPEND CMAKE_PREFIX_PATH "${MACOS_DYLIBS_DIR}")
+
+    # the RPATH to be used when installing, but only if it's not a system directory
+    list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+    if("${isSystemDir}" STREQUAL "-1")
+        set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+    endif("${isSystemDir}" STREQUAL "-1")
+
+    # if the DESTDIR env var is defined, use it in the install RPATH
+    if(DEFINED ENV{DESTDIR})
+        get_filename_component(destdirRealPath "$ENV{DESTDIR}" REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+        set(CMAKE_INSTALL_RPATH "${destdirRealPath}${CMAKE_INSTALL_PREFIX}/lib")
+    endif()
 endif ()
 
 # LIST of supported flags, use SET_CHECK_CXX_FLAGS() to apply to target.
@@ -160,9 +213,14 @@ if (NOT DISABLE_DISCORD_RPC)
             add_definitions(-D__ENABLE_DISCORD__)
             include_directories(DISCORDRPC_PROCESS_INCLUDES)
         endif()
-    endif()
-
-    if (NOT HAVE_DISCORD_RPC AND EXISTS "${ROOT_DIR}/discord-rpc")
+    elseif (APPLE AND MACOS_USE_DEPENDENCIES)
+        find_package(discordrpc CONFIG REQUIRED)
+        if(${DISCORDRPC_FOUND})
+            add_definitions(-D__ENABLE_DISCORD__)
+            set(HAVE_DISCORD_RPC TRUE)
+            message("Building with libdiscord-rpc.dylib")
+        endif()
+    elseif(NOT HAVE_DISCORD_RPC AND EXISTS "${ROOT_DIR}/discord-rpc")
         # Don't build discord's examples, some of which are in C and do not honour
         # the flags we set for C++. Also we don't use the provided examples.
         set(BUILD_EXAMPLES OFF CACHE BOOL "Build example apps")
@@ -242,6 +300,9 @@ else ()
     ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WARN_RANGE_LOOP_ANALYSIS -Wrange-loop-analysis)
     ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WARN_TAUTOLOGICAL_ZERO_COMPARE -Wtautological-unsigned-zero-compare)
     ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WARN_OLD_STYLE_CAST -Wold-style-cast)
+    # unused-const-variable=1 only checks main compilation unit
+    # unused-const-variable[=2] would check for unused values from headers as well
+    ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WARN_UNUSED_CONST_VARIABLE -Wunused-const-variable=1)
     ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WNO_CLOBBERED -Wno-clobbered)
     # Disabled due to problems compiling OpenSSL on macOS.
     # ADD_CHECK_CXX_COMPILER_FLAG(CMAKE_CXX_FLAGS CXX_WARN_DOCUMENTATION -Wdocumentation)
@@ -399,3 +460,10 @@ if (NOT DISABLE_GUI)
 endif()
 install(FILES "distribution/linux/openrct2-mimeinfo.xml" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/mime/packages/" RENAME "openrct2.xml")
 install(DIRECTORY "distribution/man/" DESTINATION "${CMAKE_INSTALL_MANDIR}/man6" FILES_MATCHING PATTERN "*.6")
+
+if (APPLE AND MACOS_USE_DEPENDENCIES)
+    # Note: dependencies may have the same names as system installed libraries
+    # (via homebrew). A local CMAKE_INSTALL_PREFIX is recommended to avoid issues
+    file(GLOB DYLIB_FILES "${MACOS_DYLIBS_DIR}/lib/*.dylib")
+    install(FILES ${DYLIB_FILES} DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+endif()
