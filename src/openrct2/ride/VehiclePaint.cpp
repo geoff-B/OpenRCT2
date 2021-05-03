@@ -14,6 +14,7 @@
 #include "../drawing/LightFX.h"
 #include "../interface/Viewport.h"
 #include "../paint/Paint.h"
+#include "../paint/sprite/Paint.Sprite.h"
 #include "../ride/RideData.h"
 #include "../world/Sprite.h"
 #include "Track.h"
@@ -3131,7 +3132,7 @@ void vehicle_visual_default(
  *
  *  rct2: 0x006D4244
  */
-void vehicle_paint(paint_session* session, const Vehicle* vehicle, int32_t imageDirection)
+template<> void PaintEntity(paint_session* session, const Vehicle* vehicle, int32_t imageDirection)
 {
     const rct_ride_entry_vehicle* vehicleEntry;
 
@@ -3139,14 +3140,14 @@ void vehicle_paint(paint_session* session, const Vehicle* vehicle, int32_t image
     int32_t y = vehicle->y;
     int32_t z = vehicle->z;
 
-    if (vehicle->flags & SPRITE_FLAGS_IS_CRASHED_VEHICLE_SPRITE)
+    if (vehicle->IsCrashedVehicle)
     {
         uint32_t ebx = 22965 + vehicle->animation_frame;
         PaintAddImageAsParent(session, ebx, 0, 0, 1, 1, 0, z, 0, 0, z + 2);
         return;
     }
 
-    if (vehicle->ride_subtype == RIDE_ENTRY_INDEX_NULL)
+    if (vehicle->ride_subtype == OBJECT_ENTRY_INDEX_NULL)
     {
         vehicleEntry = &CableLiftVehicle;
     }

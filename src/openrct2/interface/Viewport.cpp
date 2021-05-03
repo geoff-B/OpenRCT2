@@ -668,7 +668,7 @@ void viewport_update_smart_sprite_follow(rct_window* window)
         window->viewport_smart_follow_sprite = SPRITE_INDEX_NULL;
         window->viewport_target_sprite = SPRITE_INDEX_NULL;
     }
-    else if (entity->sprite_identifier == SpriteIdentifier::Peep)
+    else if (entity->Type == EntityType::Guest || entity->Type == EntityType::Staff)
     {
         Peep* peep = TryGetEntity<Peep>(window->viewport_smart_follow_sprite);
         if (peep == nullptr)
@@ -679,16 +679,16 @@ void viewport_update_smart_sprite_follow(rct_window* window)
             return;
         }
 
-        if (peep->AssignedPeepType == PeepType::Guest)
+        if (peep->Is<Guest>())
             viewport_update_smart_guest_follow(window, peep);
-        else if (peep->AssignedPeepType == PeepType::Staff)
+        else if (peep->Is<Staff>())
             viewport_update_smart_staff_follow(window, peep);
     }
-    else if (entity->sprite_identifier == SpriteIdentifier::Vehicle)
+    else if (entity->Type == EntityType::Vehicle)
     {
         viewport_update_smart_vehicle_follow(window);
     }
-    else if (entity->sprite_identifier == SpriteIdentifier::Misc || entity->sprite_identifier == SpriteIdentifier::Litter)
+    else if (entity->Type != EntityType::Null)
     {
         window->viewport_focus_sprite.sprite_id = window->viewport_smart_follow_sprite;
         window->viewport_target_sprite = window->viewport_smart_follow_sprite;

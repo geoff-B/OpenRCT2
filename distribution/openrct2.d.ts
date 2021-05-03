@@ -160,6 +160,12 @@ declare global {
      */
     interface Context {
         /**
+         * Gets the current version of the plugin api. This is an integer that increments
+         * by 1 every time a change to the plugin api is made.
+         */
+        readonly apiVersion: number;
+
+        /**
          * The user's current configuration.
          */
         configuration: Configuration;
@@ -186,11 +192,11 @@ declare global {
          * @param type The object type.
          * @param index The index.
          */
-        getObject(type: ObjectType, index: number): Object;
+        getObject(type: ObjectType, index: number): LoadedObject;
         getObject(type: "ride", index: number): RideObject;
         getObject(type: "small_scenery", index: number): SmallSceneryObject;
 
-        getAllObjects(type: ObjectType): Object[];
+        getAllObjects(type: ObjectType): LoadedObject[];
         getAllObjects(type: "ride"): RideObject[];
 
         /**
@@ -258,6 +264,7 @@ declare global {
         subscribe(hook: "network.leave", callback: (e: NetworkEventArgs) => void): IDisposable;
         subscribe(hook: "ride.ratings.calculate", callback: (e: RideRatingsCalculateArgs) => void): IDisposable;
         subscribe(hook: "action.location", callback: (e: ActionLocationArgs) => void): IDisposable;
+        subscribe(hook: "guest.generation", callback: (id: number) => void): IDisposable;
 
         /**
          * Registers a function to be called every so often in realtime, specified by the given delay.
@@ -723,7 +730,7 @@ declare global {
     /**
      * Represents the definition of a loaded object (.DAT or .json) such a ride type or scenery item.
      */
-    interface Object {
+    interface LoadedObject {
         /**
          * The object type.
          */
@@ -756,7 +763,7 @@ declare global {
     /**
      * Represents the object definition of a ride or stall.
      */
-    interface RideObject extends Object {
+    interface RideObject extends LoadedObject {
         /**
          * The description of the ride / stall in the player's current language.
          */
@@ -839,7 +846,7 @@ declare global {
     /**
      * Represents the object definition of a small scenery item such a tree.
      */
-    interface SmallSceneryObject extends Object {
+    interface SmallSceneryObject extends LoadedObject {
         /**
          * Raw bit flags that describe characteristics of the scenery item.
          */
@@ -2053,7 +2060,7 @@ declare global {
 
     type Widget =
         ButtonWidget | CheckboxWidget | ColourPickerWidget | CustomWidget | DropdownWidget | GroupBoxWidget |
-        LabelWidget | ListView | SpinnerWidget | TextBoxWidget | ViewportWidget;
+        LabelWidget | ListViewWidget | SpinnerWidget | TextBoxWidget | ViewportWidget;
 
     interface WidgetBase {
         readonly window?: Window;
@@ -2146,7 +2153,7 @@ declare global {
         column: number;
     }
 
-    interface ListView extends WidgetBase {
+    interface ListViewWidget extends WidgetBase {
         type: "listview";
         scrollbars?: ScrollbarType;
         isStriped?: boolean;

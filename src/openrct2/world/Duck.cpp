@@ -68,8 +68,7 @@ static constexpr const uint8_t * DuckAnimations[] =
 
 template<> bool SpriteBase::Is<Duck>() const
 {
-    auto* misc = As<MiscEntity>();
-    return misc && misc->SubType == MiscEntityType::Duck;
+    return Type == EntityType::Duck;
 }
 
 bool Duck::IsFlying()
@@ -281,8 +280,8 @@ uint32_t Duck::GetFrameImage(int32_t direction) const
 
 void create_duck(const CoordsXY& pos)
 {
-    rct_sprite* sprite = create_sprite(SpriteIdentifier::Misc);
-    if (sprite == nullptr)
+    auto* duck = CreateEntity<Duck>();
+    if (duck == nullptr)
         return;
 
     CoordsXY targetPos = pos;
@@ -291,11 +290,6 @@ void create_duck(const CoordsXY& pos)
     targetPos.x += offsetXY;
     targetPos.y += offsetXY;
 
-    sprite->misc.sprite_identifier = SpriteIdentifier::Misc;
-    sprite->misc.SubType = MiscEntityType::Duck;
-    auto duck = sprite->misc.As<Duck>();
-    if (duck == nullptr)
-        return; // can never happen
     duck->sprite_width = 9;
     duck->sprite_height_negative = 12;
     duck->sprite_height_positive = 9;
@@ -352,7 +346,7 @@ void duck_press(Duck* duck)
 
 void duck_remove_all()
 {
-    for (auto duck : EntityList<Duck>(EntityListId::Misc))
+    for (auto duck : EntityList<Duck>())
     {
         duck->Remove();
     }

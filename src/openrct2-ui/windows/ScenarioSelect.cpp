@@ -614,7 +614,7 @@ static void window_scenarioselect_scrollpaint(rct_window* w, rct_drawpixelinfo* 
                 if (isCompleted)
                 {
                     // Draw completion tick
-                    gfx_draw_sprite(dpi, SPR_MENU_CHECKMARK, { wide ? 500 : 395, y + 1 }, 0);
+                    gfx_draw_sprite(dpi, ImageId(SPR_MENU_CHECKMARK), { wide ? 500 : 395, y + 1 });
 
                     // Draw completion score
                     const utf8* completedByName = "???";
@@ -628,7 +628,8 @@ static void window_scenarioselect_scrollpaint(rct_window* w, rct_drawpixelinfo* 
                     ft.Add<rct_string_id>(STR_STRING);
                     ft.Add<char*>(buffer);
                     DrawTextBasic(
-                        dpi, { wide ? 270 : 210, y + scenarioTitleHeight + 1 }, format, ft, { TextAlignment::CENTRE });
+                        dpi, { wide ? 270 : 210, y + scenarioTitleHeight + 1 }, format, ft,
+                        { FontSpriteBase::SMALL, TextAlignment::CENTRE });
                 }
 
                 y += scenarioItemHeight;

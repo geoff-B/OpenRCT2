@@ -26,9 +26,9 @@
 struct IObjectManager;
 class Formatter;
 class StationObject;
-struct Peep;
 struct Ride;
 struct RideTypeDescriptor;
+struct Guest;
 struct Staff;
 struct Vehicle;
 
@@ -36,12 +36,13 @@ struct Vehicle;
 // The max number of different types of vehicle.
 // Examples of vehicles here are the locomotive, tender and carriage of the Miniature Railway.
 #define MAX_VEHICLES_PER_RIDE_ENTRY 4
-#define MAX_VEHICLES_PER_RIDE 31
+constexpr const uint8_t MAX_VEHICLES_PER_RIDE = 31;
+constexpr const uint8_t MAX_CARS_PER_TRAIN = 255;
+constexpr const uint8_t MAX_VEHICLE_COLOURS = std::max(MAX_CARS_PER_TRAIN, MAX_VEHICLES_PER_RIDE);
 #define NUM_COLOUR_SCHEMES 4
 #define MAX_CATEGORIES_PER_RIDE 2
 #define DOWNTIME_HISTORY_SIZE 8
 #define CUSTOMER_HISTORY_SIZE 10
-#define MAX_CARS_PER_TRAIN 255
 #define MAX_STATIONS 4
 #define MAX_RIDES 255
 #define RIDE_TYPE_NULL 255
@@ -53,8 +54,6 @@ constexpr uint16_t const MAX_GOLF_HOLES = RCT12_MAX_GOLF_HOLES;
 constexpr uint16_t const MAX_HELICES = RCT12_MAX_HELICES;
 
 constexpr uint16_t const MAZE_CLEARANCE_HEIGHT = 4 * COORDS_Z_STEP;
-
-constexpr const ObjectEntryIndex RIDE_ENTRY_INDEX_NULL = OBJECT_ENTRY_INDEX_NULL;
 
 constexpr const uint8_t NUM_SHOP_ITEMS_PER_RIDE = 2;
 
@@ -192,6 +191,13 @@ enum class RideClassification
     KioskOrFacility
 };
 
+namespace ShelteredSectionsBits
+{
+    constexpr const uint8_t NumShelteredSectionsMask = 0b00011111;
+    constexpr const uint8_t RotatingWhileSheltered = 0b00100000;
+    constexpr const uint8_t BankingWhileSheltered = 0b01000000;
+}; // namespace ShelteredSectionsBits
+
 struct TrackDesign;
 enum class RideMode : uint8_t;
 
@@ -210,7 +216,7 @@ struct Ride
     ObjectEntryIndex subtype;
     RideMode mode;
     uint8_t colour_scheme_type;
-    VehicleColour vehicle_colours[MAX_CARS_PER_TRAIN];
+    VehicleColour vehicle_colours[MAX_VEHICLE_COLOURS];
     // 0 = closed, 1 = open, 2 = test
     uint8_t status;
     std::string custom_name;
@@ -432,8 +438,8 @@ public:
     int32_t GetTotalQueueLength() const;
     int32_t GetMaxQueueTime() const;
 
-    void QueueInsertGuestAtFront(StationIndex stationIndex, Peep* peep);
-    Peep* GetQueueHeadGuest(StationIndex stationIndex) const;
+    void QueueInsertGuestAtFront(StationIndex stationIndex, Guest* peep);
+    Guest* GetQueueHeadGuest(StationIndex stationIndex) const;
 
     void SetNameToDefault();
     std::string GetName() const;
@@ -455,6 +461,9 @@ public:
     uint8_t GetMaxCarsPerTrain() const;
     void SetMinCarsPerTrain(uint8_t newValue);
     void SetMaxCarsPerTrain(uint8_t newValue);
+
+    uint8_t GetNumShelteredSections() const;
+    void IncreaseNumShelteredSections();
 };
 
 #pragma pack(push, 1)
@@ -1132,7 +1141,7 @@ int32_t ride_get_unused_preset_vehicle_colour(ObjectEntryIndex subType);
 void ride_set_vehicle_colours_to_random_preset(Ride* ride, uint8_t preset_index);
 void ride_measurements_update();
 void ride_breakdown_add_news_item(Ride* ride);
-Peep* ride_find_closest_mechanic(Ride* ride, int32_t forInspection);
+Staff* ride_find_closest_mechanic(Ride* ride, int32_t forInspection);
 int32_t ride_initialise_construction_window(Ride* ride);
 void ride_construction_invalidate_current_track();
 std::optional<CoordsXYZ> sub_6C683D(

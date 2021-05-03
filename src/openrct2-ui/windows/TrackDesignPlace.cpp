@@ -96,7 +96,7 @@ static rct_window_event_list window_track_place_events([](auto& events)
 static std::vector<uint8_t> _window_track_place_mini_preview;
 static CoordsXY _windowTrackPlaceLast;
 
-static uint8_t _window_track_place_ride_index;
+static ride_id_t _window_track_place_ride_index;
 static bool _window_track_place_last_was_valid;
 static CoordsXYZ _windowTrackPlaceLastValid;
 static money32 _window_track_place_last_cost;
@@ -490,7 +490,8 @@ static void window_track_place_paint(rct_window* w, rct_drawpixelinfo* dpi)
         g1temp.width = TRACK_MINI_PREVIEW_WIDTH;
         g1temp.height = TRACK_MINI_PREVIEW_HEIGHT;
         gfx_set_g1_element(SPR_TEMP, &g1temp);
-        gfx_draw_sprite(&clippedDpi, SPR_TEMP | SPRITE_ID_PALETTE_COLOUR_1(NOT_TRANSLUCENT(w->colours[0])), { 0, 0 }, 0);
+        drawing_engine_invalidate_image(SPR_TEMP);
+        gfx_draw_sprite(&clippedDpi, ImageId(SPR_TEMP, NOT_TRANSLUCENT(w->colours[0])), { 0, 0 });
     }
 
     // Price

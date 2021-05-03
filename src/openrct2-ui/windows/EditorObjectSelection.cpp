@@ -953,9 +953,9 @@ static void window_editor_object_selection_paint(rct_window* w, rct_drawpixelinf
         widget = &w->widgets[WIDX_TAB_1 + i];
         if (widget->type != WindowWidgetType::Empty)
         {
-            auto image = ObjectSelectionPages[i].Image;
+            auto image = ImageId(ObjectSelectionPages[i].Image);
             auto screenPos = w->windowPos + ScreenCoordsXY{ widget->left, widget->top };
-            gfx_draw_sprite(dpi, image, screenPos, 0);
+            gfx_draw_sprite(dpi, image, screenPos);
         }
     }
 
@@ -983,7 +983,7 @@ static void window_editor_object_selection_paint(rct_window* w, rct_drawpixelinf
             spriteIndex += (i == 4 ? ThrillRidesTabAnimationSequence[frame] : frame);
 
             auto screenPos = w->windowPos + ScreenCoordsXY{ widget->left, widget->top };
-            gfx_draw_sprite(dpi, spriteIndex | (w->colours[1] << 19), screenPos, 0);
+            gfx_draw_sprite(dpi, ImageId(spriteIndex, w->colours[1]), screenPos);
         }
     }
 
@@ -1140,7 +1140,8 @@ static void window_editor_object_selection_scrollpaint(rct_window* w, rct_drawpi
         {
             // Draw checkbox
             if (!(gScreenFlags & SCREEN_FLAGS_TRACK_MANAGER) && !(*listItem.flags & 0x20))
-                gfx_fill_rect_inset(dpi, 2, screenCoords.y, 11, screenCoords.y + 10, w->colours[1], INSET_RECT_F_E0);
+                gfx_fill_rect_inset(
+                    dpi, { { 2, screenCoords.y }, { 11, screenCoords.y + 10 } }, w->colours[1], INSET_RECT_F_E0);
 
             // Highlight background
             auto highlighted = listItem.entry == w->object_entry && !(*listItem.flags & OBJECT_SELECTION_FLAG_6);
@@ -1298,7 +1299,7 @@ static void editor_load_selected_objects()
         {
             const ObjectRepositoryItem* item = &items[i];
             const rct_object_entry* entry = &item->ObjectEntry;
-            void* loadedObject = object_manager_get_loaded_object(entry);
+            const auto* loadedObject = object_manager_get_loaded_object(ObjectEntryDescriptor(*item));
             if (loadedObject == nullptr)
             {
                 loadedObject = object_manager_load_object(entry);

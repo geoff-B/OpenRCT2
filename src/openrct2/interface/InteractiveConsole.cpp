@@ -436,7 +436,7 @@ static int32_t cc_staff(InteractiveConsole& console, const arguments_t& argv)
     {
         if (argv[0] == "list")
         {
-            for (auto peep : EntityList<Staff>(EntityListId::Peep))
+            for (auto peep : EntityList<Staff>())
             {
                 auto name = peep->GetName();
                 console.WriteFormatLine(
@@ -1071,7 +1071,7 @@ static int32_t cc_load_object(InteractiveConsole& console, const arguments_t& ar
         }
 
         const rct_object_entry* entry = &ori->ObjectEntry;
-        void* loadedObject = object_manager_get_loaded_object(entry);
+        const auto* loadedObject = object_manager_get_loaded_object(ObjectEntryDescriptor(*ori));
         if (loadedObject != nullptr)
         {
             console.WriteLineError("Object is already in scenario.");
@@ -1242,19 +1242,12 @@ static int32_t cc_show_limits(InteractiveConsole& console, [[maybe_unused]] cons
 
     int32_t rideCount = ride_get_count();
     int32_t spriteCount = 0;
-    for (int32_t i = 1; i < static_cast<uint8_t>(EntityListId::Count); ++i)
+    for (int32_t i = 0; i < static_cast<uint8_t>(EntityType::Count); ++i)
     {
-        spriteCount += GetEntityListCount(EntityListId(i));
+        spriteCount += GetEntityListCount(EntityType(i));
     }
 
-    int32_t staffCount = 0;
-    for (int32_t i = 0; i < STAFF_MAX_COUNT; ++i)
-    {
-        if (gStaffModes[i] != StaffMode::None)
-        {
-            staffCount++;
-        }
-    }
+    int32_t staffCount = GetEntityListCount(EntityType::Staff);
 
     int32_t bannerCount = 0;
     for (BannerIndex i = 0; i < MAX_BANNERS; ++i)
@@ -1587,49 +1580,43 @@ static int32_t cc_mp_desync(InteractiveConsole& console, const arguments_t& argv
         desyncType = atoi(argv[0].c_str());
     }
 
-    std::vector<Peep*> peeps;
+    std::vector<Guest*> guests;
 
-    for (int i = 0; i < MAX_ENTITIES; i++)
+    for (auto* guest : EntityList<Guest>())
     {
-        auto* sprite = GetEntity(i);
-        if (sprite == nullptr || sprite->sprite_identifier == SpriteIdentifier::Null)
-            continue;
-
-        auto peep = sprite->As<Peep>();
-        if (peep != nullptr)
-            peeps.push_back(peep);
+        guests.push_back(guest);
     }
 
     switch (desyncType)
     {
-        case 0: // Peep t-shirts.
+        case 0: // Guest t-shirts.
         {
-            if (peeps.empty())
+            if (guests.empty())
             {
-                console.WriteFormatLine("No peeps");
+                console.WriteFormatLine("No guests");
             }
             else
             {
-                auto* peep = peeps[0];
-                if (peeps.size() > 1)
-                    peep = peeps[util_rand() % peeps.size() - 1];
-                peep->TshirtColour = util_rand() & 0xFF;
-                peep->Invalidate();
+                auto* guest = guests[0];
+                if (guests.size() > 1)
+                    guest = guests[util_rand() % guests.size() - 1];
+                guest->TshirtColour = util_rand() & 0xFF;
+                guest->Invalidate();
             }
             break;
         }
-        case 1: // Remove random peep.
+        case 1: // Remove random guest.
         {
-            if (peeps.empty())
+            if (guests.empty())
             {
-                console.WriteFormatLine("No peep removed");
+                console.WriteFormatLine("No guest removed");
             }
             else
             {
-                auto* peep = peeps[0];
-                if (peeps.size() > 1)
-                    peep = peeps[util_rand() % peeps.size() - 1];
-                peep->Remove();
+                auto* guest = guests[0];
+                if (guests.size() > 1)
+                    guest = guests[util_rand() % guests.size() - 1];
+                guest->Remove();
             }
             break;
         }
@@ -1817,7 +1804,7 @@ static constexpr const console_command console_command_table[] = {
     { "replay_start", cc_replay_start, "Starts a replay", "replay_start <name>"},
     { "replay_stop", cc_replay_stop, "Stops the replay", "replay_stop"},
     { "replay_normalise", cc_replay_normalise, "Normalises the replay to remove all gaps", "replay_normalise <input file> <output file>"},
-    { "mp_desync", cc_mp_desync, "Forces a multiplayer desync", "cc_mp_desync [desync_type, 0 = Random t-shirt color on random peep, 1 = Remove random peep ]"},
+    { "mp_desync", cc_mp_desync, "Forces a multiplayer desync", "cc_mp_desync [desync_type, 0 = Random t-shirt color on random guest, 1 = Remove random guest ]"},
 
 };
 // clang-format on

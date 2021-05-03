@@ -3,18 +3,32 @@
 #include "../common.h"
 
 struct CoordsXYZ;
-enum class EntityListId : uint8_t;
-enum class SpriteIdentifier : uint8_t;
+
+enum class EntityType : uint8_t
+{
+    Vehicle,
+    Guest,
+    Staff,
+    Litter,
+    SteamParticle,
+    MoneyEffect,
+    CrashedVehicleParticle,
+    ExplosionCloud,
+    CrashSplash,
+    ExplosionFlare,
+    JumpingFountain,
+    Balloon,
+    Duck,
+    Count,
+    Null = 255
+};
 
 struct SpriteBase
 {
-    SpriteIdentifier sprite_identifier;
-    // Valid values are EntityListId::...
-    EntityListId linked_list_index;
+    EntityType Type;
     // Height from centre of sprite to bottom
     uint8_t sprite_height_negative;
     uint16_t sprite_index;
-    uint16_t flags;
     int16_t x;
     int16_t y;
     int16_t z;
@@ -60,9 +74,7 @@ struct SpriteBase
     }
 };
 
-enum class MiscEntityType : uint8_t;
 struct MiscEntity : SpriteBase
 {
-    MiscEntityType SubType;
     uint16_t frame;
 };

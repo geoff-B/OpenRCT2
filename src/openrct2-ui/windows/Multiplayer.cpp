@@ -855,7 +855,8 @@ static void window_multiplayer_groups_paint(rct_window* w, rct_drawpixelinfo* dp
     screenPos.y += 20;
 
     gfx_fill_rect_inset(
-        dpi, screenPos.x, screenPos.y - 6, screenPos.x + 310, screenPos.y - 5, w->colours[1], INSET_RECT_FLAG_BORDER_INSET);
+        dpi, { screenPos - ScreenCoordsXY{ 0, 6 }, screenPos + ScreenCoordsXY{ 310, -5 } }, w->colours[1],
+        INSET_RECT_FLAG_BORDER_INSET);
 
     widget = &window_multiplayer_groups_widgets[WIDX_SELECTED_GROUP];
     group = network_get_group_index(_selectedGroup);
@@ -999,7 +1000,8 @@ static void window_multiplayer_draw_tab_image(rct_window* w, rct_drawpixelinfo* 
         }
 
         gfx_draw_sprite(
-            dpi, spriteIndex, w->windowPos + ScreenCoordsXY{ w->widgets[widgetIndex].left, w->widgets[widgetIndex].top }, 0);
+            dpi, ImageId(spriteIndex),
+            w->windowPos + ScreenCoordsXY{ w->widgets[widgetIndex].left, w->widgets[widgetIndex].top });
     }
 }
 

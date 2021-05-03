@@ -154,10 +154,10 @@ static void ride_ratings_update_state()
  */
 static void ride_ratings_update_state_0()
 {
-    int32_t currentRide = gRideRatingsCalcData.CurrentRide;
+    ride_id_t currentRide = gRideRatingsCalcData.CurrentRide;
 
     currentRide++;
-    if (currentRide == RIDE_ID_NULL)
+    if (currentRide >= MAX_RIDES)
     {
         currentRide = 0;
     }
@@ -1326,19 +1326,19 @@ static RatingTuple ride_ratings_get_sheltered_ratings(Ride* ride)
     /*eax = (ride->var_11C * 30340) >> 16;*/
     /*nausea += eax;*/
 
-    if (ride->num_sheltered_sections & 0x40)
+    if (ride->num_sheltered_sections & ShelteredSectionsBits::BankingWhileSheltered)
     {
         excitement += 20;
         nausea += 15;
     }
 
-    if (ride->num_sheltered_sections & 0x20)
+    if (ride->num_sheltered_sections & ShelteredSectionsBits::RotatingWhileSheltered)
     {
         excitement += 20;
         nausea += 15;
     }
 
-    uint8_t lowerVal = ride->num_sheltered_sections & 0x1F;
+    uint8_t lowerVal = ride->GetNumShelteredSections();
     lowerVal = std::min<uint8_t>(lowerVal, 11);
     excitement += (lowerVal * 774516) >> 16;
 

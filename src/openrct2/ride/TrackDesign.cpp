@@ -1887,7 +1887,7 @@ static bool track_design_place_preview(TrackDesign* td6, money32* cost, Ride** o
     ObjectEntryIndex entry_index;
     if (!find_object_in_entry_group(&td6->vehicle_object, &entry_type, &entry_index))
     {
-        entry_index = RIDE_ENTRY_INDEX_NULL;
+        entry_index = OBJECT_ENTRY_INDEX_NULL;
     }
 
     ride_id_t rideIndex;
@@ -2144,8 +2144,8 @@ static void track_design_preview_clear_map()
         tile_element->SetLastForTile(true);
         tile_element->AsSurface()->SetSlope(TILE_ELEMENT_SLOPE_FLAT);
         tile_element->AsSurface()->SetWaterHeight(0);
-        tile_element->AsSurface()->SetSurfaceStyle(TERRAIN_GRASS);
-        tile_element->AsSurface()->SetEdgeStyle(TERRAIN_EDGE_ROCK);
+        tile_element->AsSurface()->SetSurfaceStyle(0);
+        tile_element->AsSurface()->SetEdgeStyle(0);
         tile_element->AsSurface()->SetGrassLength(GRASS_LENGTH_CLEAR_0);
         tile_element->AsSurface()->SetOwnership(OWNERSHIP_OWNED);
         tile_element->AsSurface()->SetParkFences(0);

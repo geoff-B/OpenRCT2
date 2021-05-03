@@ -40,6 +40,7 @@
 #include "Station.h"
 #include "Track.h"
 #include "TrackData.h"
+#include "TrainManager.h"
 #include "VehicleData.h"
 #include "VehicleSubpositionData.h"
 
@@ -733,7 +734,7 @@ static const struct
 
 template<> bool SpriteBase::Is<Vehicle>() const
 {
-    return sprite_identifier == SpriteIdentifier::Vehicle;
+    return Type == EntityType::Vehicle;
 }
 
 static bool vehicle_move_info_valid(
@@ -1295,7 +1296,7 @@ void vehicle_sounds_update()
 
     vehicle_sounds_update_window_setup();
 
-    for (auto vehicle : EntityList<Vehicle>(EntityListId::TrainHead))
+    for (auto vehicle : TrainManager::View())
     {
         vehicle->UpdateSoundParams(vehicleSoundParamsList);
     }
@@ -1378,7 +1379,7 @@ void vehicle_update_all()
     if ((gScreenFlags & SCREEN_FLAGS_TRACK_DESIGNER) && gS6Info.editor_step != EditorStep::RollercoasterDesigner)
         return;
 
-    for (auto vehicle : EntityList<Vehicle>(EntityListId::TrainHead))
+    for (auto vehicle : TrainManager::View())
     {
         vehicle->Update();
     }
@@ -1908,20 +1909,16 @@ void Vehicle::UpdateMeasurements()
     {
         curRide->testing_flags |= RIDE_TESTING_SHELTERED;
 
-        uint8_t numShelteredSections = curRide->num_sheltered_sections & 0x1F;
-        if (numShelteredSections != 0x1F)
-            numShelteredSections++;
-        curRide->num_sheltered_sections &= ~0x1F;
-        curRide->num_sheltered_sections |= numShelteredSections;
+        curRide->IncreaseNumShelteredSections();
 
         if (vehicle_sprite_type != 0)
         {
-            curRide->num_sheltered_sections |= (1 << 5);
+            curRide->num_sheltered_sections |= ShelteredSectionsBits::RotatingWhileSheltered;
         }
 
         if (bank_rotation != 0)
         {
-            curRide->num_sheltered_sections |= (1 << 6);
+            curRide->num_sheltered_sections |= ShelteredSectionsBits::BankingWhileSheltered;
         }
     }
 
@@ -1984,7 +1981,7 @@ void Vehicle::GetLiftHillSound(Ride* curRide, SoundIdVolume& curSound)
 void Vehicle::Update()
 {
     // The cable lift uses a ride entry index of NULL
-    if (ride_subtype == RIDE_ENTRY_INDEX_NULL)
+    if (ride_subtype == OBJECT_ENTRY_INDEX_NULL)
     {
         CableLiftUpdate();
         return;
@@ -2906,7 +2903,7 @@ static bool ride_station_can_depart_synchronised(const Ride& ride, StationIndex 
                     if (!(sv_ride->stations[sv->stationIndex].Depart & STATION_DEPART_FLAG))
                     {
                         sv = _synchronisedVehicles;
-                        uint8_t rideId = RIDE_ID_NULL;
+                        ride_id_t rideId = RIDE_ID_NULL;
                         for (; sv < _lastSynchronisedVehicle; sv++)
                         {
                             if (rideId == RIDE_ID_NULL)
@@ -3609,7 +3606,7 @@ void Vehicle::UpdateCollisionSetup()
             crashed_vehicle_particle_create(train->colours, { train->x, train->y, train->z });
         }
 
-        train->flags |= SPRITE_FLAGS_IS_CRASHED_VEHICLE_SPRITE;
+        train->IsCrashedVehicle = true;
         train->var_C8 = scenario_rand();
         train->var_CA = scenario_rand();
 
@@ -5368,7 +5365,7 @@ void Vehicle::CrashOnLand()
     while (numParticles-- != 0)
         crashed_vehicle_particle_create(colours, { x, y, z });
 
-    flags |= SPRITE_FLAGS_IS_CRASHED_VEHICLE_SPRITE;
+    IsCrashedVehicle = true;
     animation_frame = 0;
     var_C8 = 0;
     sprite_width = 13;
@@ -5431,7 +5428,7 @@ void Vehicle::CrashOnWater()
     for (int32_t i = 0; i < 10; ++i)
         crashed_vehicle_particle_create(colours, { x - 4, y + 8, z });
 
-    flags |= SPRITE_FLAGS_IS_CRASHED_VEHICLE_SPRITE;
+    IsCrashedVehicle = true;
     animation_frame = 0;
     var_C8 = 0;
     sprite_width = 13;
@@ -7236,15 +7233,13 @@ static void steam_particle_create(const CoordsXYZ& coords)
     auto surfaceElement = map_get_surface_element_at(coords);
     if (surfaceElement != nullptr && coords.z > surfaceElement->GetBaseZ())
     {
-        SteamParticle* steam = &create_sprite(SpriteIdentifier::Misc)->steam_particle;
+        SteamParticle* steam = CreateEntity<SteamParticle>();
         if (steam == nullptr)
             return;
 
         steam->sprite_width = 20;
         steam->sprite_height_negative = 18;
         steam->sprite_height_positive = 16;
-        steam->sprite_identifier = SpriteIdentifier::Misc;
-        steam->SubType = MiscEntityType::SteamParticle;
         steam->frame = 256;
         steam->time_to_move = 0;
         steam->MoveTo(coords);
@@ -7750,7 +7745,7 @@ bool Vehicle::UpdateMotionCollisionDetection(const CoordsXYZ& loc, uint16_t* oth
             if (z_diff > 16)
                 continue;
 
-            if (vehicle2->ride_subtype == RIDE_ENTRY_INDEX_NULL)
+            if (vehicle2->ride_subtype == OBJECT_ENTRY_INDEX_NULL)
                 continue;
 
             auto collideVehicleEntry = vehicle2->Entry();

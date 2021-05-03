@@ -26,6 +26,7 @@
 #include <openrct2/localisation/Localisation.h>
 #include <openrct2/ride/RideData.h>
 #include <openrct2/ride/Track.h>
+#include <openrct2/ride/TrainManager.h>
 #include <openrct2/world/EntityList.h>
 #include <openrct2/world/Entrance.h>
 #include <openrct2/world/Footpath.h>
@@ -831,9 +832,7 @@ static void window_map_paint(rct_window* w, rct_drawpixelinfo* dpi)
         screenCoords = w->windowPos
             + ScreenCoordsXY{ w->widgets[WIDX_PEOPLE_STARTING_POSITION].left + 12,
                               w->widgets[WIDX_PEOPLE_STARTING_POSITION].top + 18 };
-        gfx_draw_sprite(
-            dpi, IMAGE_TYPE_REMAP | IMAGE_TYPE_REMAP_2_PLUS | (COLOUR_LIGHT_BROWN << 24) | (COLOUR_BRIGHT_RED << 19) | SPR_6410,
-            screenCoords, 0);
+        gfx_draw_sprite(dpi, ImageId(SPR_6410, COLOUR_BRIGHT_RED, COLOUR_LIGHT_BROWN), screenCoords);
     }
 
     if (!(gScreenFlags & SCREEN_FLAGS_SCENARIO_EDITOR) && !gCheatsSandboxMode)
@@ -885,7 +884,7 @@ static void window_map_scrollpaint(rct_window* w, rct_drawpixelinfo* dpi, int32_
     g1temp.y_offset = -8;
     gfx_set_g1_element(SPR_TEMP, &g1temp);
     drawing_engine_invalidate_image(SPR_TEMP);
-    gfx_draw_sprite(dpi, SPR_TEMP, { 0, 0 }, 0);
+    gfx_draw_sprite(dpi, ImageId(SPR_TEMP), { 0, 0 });
 
     if (w->selected_tab == PAGE_PEEPS)
     {
@@ -1006,7 +1005,8 @@ static void window_map_draw_tab_images(rct_window* w, rct_drawpixelinfo* dpi)
         image += w->list_information_type / 4;
 
     gfx_draw_sprite(
-        dpi, image, w->windowPos + ScreenCoordsXY{ w->widgets[WIDX_PEOPLE_TAB].left, w->widgets[WIDX_PEOPLE_TAB].top }, 0);
+        dpi, ImageId(image),
+        w->windowPos + ScreenCoordsXY{ w->widgets[WIDX_PEOPLE_TAB].left, w->widgets[WIDX_PEOPLE_TAB].top });
 
     // Ride/stall tab image (animated)
     image = SPR_TAB_RIDE_0;
@@ -1014,7 +1014,7 @@ static void window_map_draw_tab_images(rct_window* w, rct_drawpixelinfo* dpi)
         image += w->list_information_type / 4;
 
     gfx_draw_sprite(
-        dpi, image, w->windowPos + ScreenCoordsXY{ w->widgets[WIDX_RIDES_TAB].left, w->widgets[WIDX_RIDES_TAB].top }, 0);
+        dpi, ImageId(image), w->windowPos + ScreenCoordsXY{ w->widgets[WIDX_RIDES_TAB].left, w->widgets[WIDX_RIDES_TAB].top });
 }
 
 /**
@@ -1101,12 +1101,12 @@ static uint8_t MapGetStaffFlashColour()
 static void window_map_paint_peep_overlay(rct_drawpixelinfo* dpi)
 {
     auto flashColour = MapGetGuestFlashColour();
-    for (auto guest : EntityList<Guest>(EntityListId::Peep))
+    for (auto guest : EntityList<Guest>())
     {
         DrawMapPeepPixel(guest, flashColour, dpi);
     }
     flashColour = MapGetStaffFlashColour();
-    for (auto staff : EntityList<Staff>(EntityListId::Peep))
+    for (auto staff : EntityList<Staff>())
     {
         DrawMapPeepPixel(staff, flashColour, dpi);
     }
@@ -1118,7 +1118,7 @@ static void window_map_paint_peep_overlay(rct_drawpixelinfo* dpi)
  */
 static void window_map_paint_train_overlay(rct_drawpixelinfo* dpi)
 {
-    for (auto train : EntityList<Vehicle>(EntityListId::TrainHead))
+    for (auto train : TrainManager::View())
     {
         for (Vehicle* vehicle = train; vehicle != nullptr; vehicle = GetEntity<Vehicle>(vehicle->next_vehicle_on_train))
         {
@@ -1327,7 +1327,7 @@ static void window_map_place_park_entrance_tool_down(const ScreenCoordsXY& scree
     CoordsXYZD parkEntrancePosition = place_park_entrance_get_map_position(screenCoords);
     if (!parkEntrancePosition.isNull())
     {
-        auto gameAction = PlaceParkEntranceAction(parkEntrancePosition);
+        auto gameAction = PlaceParkEntranceAction(parkEntrancePosition, gFootpathSelectedId);
         auto result = GameActions::Execute(&gameAction);
         if (result->Error == GameActions::Status::Ok)
         {

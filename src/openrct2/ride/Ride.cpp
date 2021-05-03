@@ -63,6 +63,7 @@
 #include "Track.h"
 #include "TrackData.h"
 #include "TrackDesign.h"
+#include "TrainManager.h"
 #include "Vehicle.h"
 
 #include <algorithm>
@@ -130,7 +131,7 @@ Direction gRideEntranceExitPlaceDirection;
 uint8_t gLastEntranceStyle;
 
 // Static function declarations
-Peep* find_closest_mechanic(const CoordsXY& entrancePosition, int32_t forInspection);
+Staff* find_closest_mechanic(const CoordsXY& entrancePosition, int32_t forInspection);
 static void ride_breakdown_status_update(Ride* ride);
 static void ride_breakdown_update(Ride* ride);
 static void ride_call_closest_mechanic(Ride* ride);
@@ -308,12 +309,12 @@ int32_t Ride::GetMaxQueueTime() const
     return static_cast<int32_t>(queueTime);
 }
 
-Peep* Ride::GetQueueHeadGuest(StationIndex stationIndex) const
+Guest* Ride::GetQueueHeadGuest(StationIndex stationIndex) const
 {
-    Peep* peep;
-    Peep* result = nullptr;
+    Guest* peep;
+    Guest* result = nullptr;
     uint16_t spriteIndex = stations[stationIndex].LastPeepInQueue;
-    while ((peep = try_get_guest(spriteIndex)) != nullptr)
+    while ((peep = TryGetEntity<Guest>(spriteIndex)) != nullptr)
     {
         spriteIndex = peep->GuestNextInQueue;
         result = peep;
@@ -324,9 +325,9 @@ Peep* Ride::GetQueueHeadGuest(StationIndex stationIndex) const
 void Ride::UpdateQueueLength(StationIndex stationIndex)
 {
     uint16_t count = 0;
-    Peep* peep;
+    Guest* peep;
     uint16_t spriteIndex = stations[stationIndex].LastPeepInQueue;
-    while ((peep = try_get_guest(spriteIndex)) != nullptr)
+    while ((peep = TryGetEntity<Guest>(spriteIndex)) != nullptr)
     {
         spriteIndex = peep->GuestNextInQueue;
         count++;
@@ -334,13 +335,13 @@ void Ride::UpdateQueueLength(StationIndex stationIndex)
     stations[stationIndex].QueueLength = count;
 }
 
-void Ride::QueueInsertGuestAtFront(StationIndex stationIndex, Peep* peep)
+void Ride::QueueInsertGuestAtFront(StationIndex stationIndex, Guest* peep)
 {
     assert(stationIndex < MAX_STATIONS);
     assert(peep != nullptr);
 
     peep->GuestNextInQueue = SPRITE_INDEX_NULL;
-    Peep* queueHeadGuest = GetQueueHeadGuest(peep->CurrentRideStation);
+    auto* queueHeadGuest = GetQueueHeadGuest(peep->CurrentRideStation);
     if (queueHeadGuest == nullptr)
     {
         stations[peep->CurrentRideStation].LastPeepInQueue = peep->sprite_index;
@@ -361,7 +362,7 @@ void ride_update_favourited_stat()
     for (auto& ride : GetRideManager())
         ride.guests_favourite = 0;
 
-    for (auto peep : EntityList<Guest>(EntityListId::Peep))
+    for (auto peep : EntityList<Guest>())
     {
         if (peep->FavouriteRide != RIDE_ID_NULL)
         {
@@ -837,7 +838,7 @@ void Ride::FormatStatusTo(Formatter& ft) const
         mode == RideMode::Race && !(lifecycle_flags & RIDE_LIFECYCLE_PASS_STATION_NO_STOPPING)
         && race_winner != SPRITE_INDEX_NULL)
     {
-        auto peep = GetEntity<Peep>(race_winner);
+        auto peep = GetEntity<Guest>(race_winner);
         if (peep != nullptr)
         {
             ft.Add<rct_string_id>(STR_RACE_WON_BY);
@@ -1115,7 +1116,7 @@ void ride_remove_peeps(Ride* ride)
     }
 
     // Place all the guests at exit
-    for (auto peep : EntityList<Guest>(EntityListId::Peep))
+    for (auto peep : EntityList<Guest>())
     {
         if (peep->State == PeepState::QueuingFront || peep->State == PeepState::EnteringRide
             || peep->State == PeepState::LeavingRide || peep->State == PeepState::OnRide)
@@ -1150,7 +1151,7 @@ void ride_remove_peeps(Ride* ride)
         }
     }
     // Place all the staff at exit
-    for (auto peep : EntityList<Staff>(EntityListId::Peep))
+    for (auto peep : EntityList<Staff>())
     {
         if (peep->State == PeepState::Fixing || peep->State == PeepState::Inspecting)
         {
@@ -2697,7 +2698,7 @@ static void ride_call_closest_mechanic(Ride* ride)
         ride_call_mechanic(ride, mechanic, forInspection);
 }
 
-Peep* ride_find_closest_mechanic(Ride* ride, int32_t forInspection)
+Staff* ride_find_closest_mechanic(Ride* ride, int32_t forInspection)
 {
     // Get either exit position or entrance position if there is no exit
     auto stationIndex = ride->inspection_station;
@@ -2726,12 +2727,12 @@ Peep* ride_find_closest_mechanic(Ride* ride, int32_t forInspection)
  *  rct2: 0x006B774B (forInspection = 0)
  *  rct2: 0x006B78C3 (forInspection = 1)
  */
-Peep* find_closest_mechanic(const CoordsXY& entrancePosition, int32_t forInspection)
+Staff* find_closest_mechanic(const CoordsXY& entrancePosition, int32_t forInspection)
 {
-    Peep* closestMechanic = nullptr;
+    Staff* closestMechanic = nullptr;
     uint32_t closestDistance = std::numeric_limits<uint32_t>::max();
 
-    for (auto peep : EntityList<Staff>(EntityListId::Peep))
+    for (auto peep : EntityList<Staff>())
     {
         if (!peep->IsMechanic())
             continue;
@@ -3094,7 +3095,7 @@ vehicle_colour ride_get_vehicle_colour(Ride* ride, int32_t vehicleIndex)
     vehicle_colour result;
 
     // Prevent indexing array out of bounds
-    vehicleIndex = std::min(vehicleIndex, MAX_CARS_PER_TRAIN);
+    vehicleIndex = std::min<int32_t>(vehicleIndex, MAX_CARS_PER_TRAIN);
 
     result.main = ride->vehicle_colours[vehicleIndex].Body;
     result.additional_1 = ride->vehicle_colours[vehicleIndex].Trim;
@@ -4049,7 +4050,7 @@ static void ride_set_start_finish_points(ride_id_t rideIndex, CoordsXYE* startEl
  */
 static int32_t count_free_misc_sprite_slots()
 {
-    int32_t miscSpriteCount = GetEntityListCount(EntityListId::Misc);
+    int32_t miscSpriteCount = GetMiscEntityCount();
     int32_t remainingSpriteCount = GetNumFreeEntities();
     return std::max(0, miscSpriteCount + remainingSpriteCount - 300);
 }
@@ -4083,6 +4084,9 @@ static Vehicle* vehicle_create_car(
     ride_id_t rideIndex, int32_t vehicleEntryIndex, int32_t carIndex, int32_t vehicleIndex, const CoordsXYZ& carPosition,
     int32_t* remainingDistance, TrackElement* trackElement)
 {
+    if (trackElement == nullptr)
+        return nullptr;
+
     auto ride = get_ride(rideIndex);
     if (ride == nullptr)
         return nullptr;
@@ -4092,12 +4096,10 @@ static Vehicle* vehicle_create_car(
         return nullptr;
 
     auto vehicleEntry = &rideEntry->vehicles[vehicleEntryIndex];
-    auto vehicle = &create_sprite(SpriteIdentifier::Vehicle, carIndex == 0 ? EntityListId::TrainHead : EntityListId::Vehicle)
-                        ->vehicle;
+    auto vehicle = CreateEntity<Vehicle>();
     if (vehicle == nullptr)
         return nullptr;
 
-    vehicle->sprite_identifier = SpriteIdentifier::Vehicle;
     vehicle->ride = rideIndex;
     vehicle->ride_subtype = ride->subtype;
 
@@ -4268,6 +4270,7 @@ static Vehicle* vehicle_create_car(
     vehicle->num_peeps = 0;
     vehicle->next_free_seat = 0;
     vehicle->BoatLocation.setNull();
+    vehicle->IsCrashedVehicle = false;
     return vehicle;
 }
 
@@ -4428,7 +4431,7 @@ static void ride_create_vehicles_find_first_block(Ride* ride, CoordsXYE* outXYEl
 bool Ride::CreateVehicles(const CoordsXYE& element, bool isApplying)
 {
     UpdateMaxVehicles();
-    if (subtype == RIDE_ENTRY_INDEX_NULL)
+    if (subtype == OBJECT_ENTRY_INDEX_NULL)
     {
         return true;
     }
@@ -4887,7 +4890,7 @@ bool Ride::Test(int32_t newStatus, bool isApplying)
         }
     }
 
-    if (subtype != RIDE_ENTRY_INDEX_NULL && !gCheatsEnableAllDrawableTrackPieces)
+    if (subtype != OBJECT_ENTRY_INDEX_NULL && !gCheatsEnableAllDrawableTrackPieces)
     {
         rct_ride_entry* rideType = get_ride_entry(subtype);
         if (rideType->flags & RIDE_ENTRY_FLAG_NO_INVERSIONS)
@@ -5020,7 +5023,7 @@ bool Ride::Open(bool isApplying)
         }
     }
 
-    if (subtype != RIDE_ENTRY_INDEX_NULL && !gCheatsEnableAllDrawableTrackPieces)
+    if (subtype != OBJECT_ENTRY_INDEX_NULL && !gCheatsEnableAllDrawableTrackPieces)
     {
         rct_ride_entry* rideEntry = get_ride_entry(subtype);
         if (rideEntry->flags & RIDE_ENTRY_FLAG_NO_INVERSIONS)
@@ -5196,7 +5199,7 @@ int32_t ride_get_refund_price(const Ride* ride)
  */
 void Ride::StopGuestsQueuing()
 {
-    for (auto peep : EntityList<Guest>(EntityListId::Peep))
+    for (auto peep : EntityList<Guest>())
     {
         if (peep->State != PeepState::Queuing)
             continue;
@@ -6342,7 +6345,7 @@ static int32_t ride_get_track_length(Ride* ride)
  */
 void Ride::UpdateMaxVehicles()
 {
-    if (subtype == RIDE_ENTRY_INDEX_NULL)
+    if (subtype == OBJECT_ENTRY_INDEX_NULL)
         return;
 
     rct_ride_entry* rideEntry = get_ride_entry(subtype);
@@ -6399,7 +6402,7 @@ void Ride::UpdateMaxVehicles()
         {
             case RideMode::ContinuousCircuitBlockSectioned:
             case RideMode::PoweredLaunchBlockSectioned:
-                maxNumTrains = std::clamp(num_stations + num_block_brakes - 1, 1, 31);
+                maxNumTrains = std::clamp<int32_t>(num_stations + num_block_brakes - 1, 1, MAX_VEHICLES_PER_RIDE);
                 break;
             case RideMode::ReverseInclineLaunchedShuttle:
             case RideMode::PoweredLaunchPasstrough:
@@ -6431,7 +6434,7 @@ void Ride::UpdateMaxVehicles()
                 if ((mode != RideMode::StationToStation && mode != RideMode::ContinuousCircuit)
                     || !(GetRideTypeDescriptor().HasFlag(RIDE_TYPE_FLAG_ALLOW_MORE_VEHICLES_THAN_STATION_FITS)))
                 {
-                    maxNumTrains = std::min(maxNumTrains, 31);
+                    maxNumTrains = std::min(maxNumTrains, int32_t(MAX_VEHICLES_PER_RIDE));
                 }
                 else
                 {
@@ -6460,7 +6463,7 @@ void Ride::UpdateMaxVehicles()
                     {
                         maxNumTrains++;
                         length += totalSpacing;
-                    } while (maxNumTrains < 31 && length < trackLength);
+                    } while (maxNumTrains < MAX_VEHICLES_PER_RIDE && length < trackLength);
                 }
                 break;
         }
@@ -6479,7 +6482,7 @@ void Ride::UpdateMaxVehicles()
 
     if (gCheatsDisableTrainLengthLimit)
     {
-        maxNumTrains = 31;
+        maxNumTrains = MAX_VEHICLES_PER_RIDE;
     }
     numVehicles = std::min(proposed_num_vehicles, static_cast<uint8_t>(maxNumTrains));
 
@@ -7075,7 +7078,7 @@ int32_t ride_get_entry_index(int32_t rideType, int32_t rideSubType)
 {
     int32_t subType = rideSubType;
 
-    if (subType == RIDE_ENTRY_INDEX_NULL)
+    if (subType == OBJECT_ENTRY_INDEX_NULL)
     {
         auto& objManager = GetContext()->GetObjectManager();
         auto& rideEntries = objManager.GetAllRideEntries(rideType);
@@ -7087,7 +7090,7 @@ int32_t ride_get_entry_index(int32_t rideType, int32_t rideSubType)
                 auto rideEntry = get_ride_entry(rideEntryIndex);
                 if (rideEntry == nullptr)
                 {
-                    return RIDE_ENTRY_INDEX_NULL;
+                    return OBJECT_ENTRY_INDEX_NULL;
                 }
 
                 // Can happen in select-by-track-type mode
@@ -7344,4 +7347,18 @@ void Ride::SetMaxCarsPerTrain(uint8_t newValue)
 {
     min_max_cars_per_train &= ~0x0F;
     min_max_cars_per_train |= newValue & 0x0F;
+}
+
+uint8_t Ride::GetNumShelteredSections() const
+{
+    return num_sheltered_sections & ShelteredSectionsBits::NumShelteredSectionsMask;
+}
+
+void Ride::IncreaseNumShelteredSections()
+{
+    auto newNumShelteredSections = GetNumShelteredSections();
+    if (newNumShelteredSections != 0x1F)
+        newNumShelteredSections++;
+    num_sheltered_sections &= ~ShelteredSectionsBits::NumShelteredSectionsMask;
+    num_sheltered_sections |= newNumShelteredSections;
 }

@@ -383,7 +383,7 @@ int32_t Park::CalculateParkRating() const
         // Find the number of happy peeps and the number of peeps who can't find the park exit
         uint32_t happyGuestCount = 0;
         uint32_t lostGuestCount = 0;
-        for (auto peep : EntityList<Guest>(EntityListId::Peep))
+        for (auto peep : EntityList<Guest>())
         {
             if (!peep->OutsideOfPark)
             {
@@ -466,7 +466,7 @@ int32_t Park::CalculateParkRating() const
     // Litter
     {
         int32_t litterCount = 0;
-        for (auto litter : EntityList<Litter>(EntityListId::Litter))
+        for (auto litter : EntityList<Litter>())
         {
             // Ignore recently dropped litter
             if (litter->creationTick - gScenarioTicks >= 7680)
@@ -699,7 +699,7 @@ void Park::GenerateGuests()
     }
 }
 
-Peep* Park::GenerateGuestFromCampaign(int32_t campaign)
+Guest* Park::GenerateGuestFromCampaign(int32_t campaign)
 {
     auto peep = GenerateGuest();
     if (peep != nullptr)
@@ -709,14 +709,14 @@ Peep* Park::GenerateGuestFromCampaign(int32_t campaign)
     return peep;
 }
 
-Peep* Park::GenerateGuest()
+Guest* Park::GenerateGuest()
 {
-    Peep* peep = nullptr;
+    Guest* peep = nullptr;
     const auto spawn = get_random_peep_spawn();
     if (spawn != nullptr)
     {
         auto direction = direction_reverse(spawn->direction);
-        peep = Peep::Generate({ spawn->x, spawn->y, spawn->z });
+        peep = Guest::Generate({ spawn->x, spawn->y, spawn->z });
         if (peep != nullptr)
         {
             peep->sprite_direction = direction << 3;
